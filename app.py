@@ -143,6 +143,48 @@ with tab1:
         color_discrete_map=get_valid_colors(wq_counts, "Category", QUAL_COLORS)
     )
     st.plotly_chart(fig, use_container_width=True)
+    # ─ River Analysis ─
+
+st.markdown("### 🌊 River Water Quality Analysis")
+
+if "River" in filt.columns:
+
+    river_df = filt.dropna(subset=["River", "WQI"])
+
+    if len(river_df) > 0:
+
+        river_summary = river_df.groupby("River").agg(
+            mean_WQI=("WQI", "mean"),
+            samples=("WQI", "count"),
+            safe_pct=("is_safe", lambda x: x.mean() * 100)
+        ).reset_index()
+
+        river_summary = river_summary.sort_values("mean_WQI")
+
+        # Risk classification
+        river_summary["Risk"] = river_summary["mean_WQI"].apply(
+            lambda x: "High Risk" if x > 70 else "Moderate" if x > 50 else "Low Risk"
+        )
+
+        st.dataframe(river_summary.head(10), use_container_width=True)
+
+        fig = px.bar(
+            river_summary.head(10),
+            x="mean_WQI",
+            y="River",
+            orientation="h",
+            color="mean_WQI",
+            color_continuous_scale="RdYlGn_r",
+            title="Top Polluted Rivers"
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    else:
+        st.info("No river data after filtering.")
+
+else:
+    st.warning("River column not found in dataset.")
 
     # histogram
     fig = px.histogram(plot_df, x="WQI", nbins=40)
