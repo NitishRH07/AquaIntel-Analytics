@@ -205,12 +205,13 @@ with tab2:
                 size_max=12,
                 center={"lat": 20.5, "lon": 80},
                 zoom=4,
+                mapbox_style="open-street-map",
             )
 
             # improve marker visibility
             fig2.update_traces(
                 marker=dict(
-                opacity=0.9
+                    opacity=0.9
                 )
             )
 
