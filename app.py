@@ -1,4 +1,4 @@
-import os, sys, warnings, joblib
+import os, sys, warnings, joblib, json, re
 sys.path.insert(0, os.path.dirname(__file__))
 warnings.filterwarnings("ignore")
 
@@ -242,6 +242,100 @@ QUAL_COLORS = {
 def get_valid_colors(df, column, color_map):
     present = df[column].dropna().astype(str).str.strip().unique()
     return {k: v for k, v in color_map.items() if k in present}
+
+
+GEOJSON_RELATIVE_PATH = os.path.join("data", "geo", "india_districts.geojson")
+
+
+def normalize_geo_name(value):
+    if pd.isna(value):
+        return ""
+    return re.sub(r"[^a-z0-9]+", " ", str(value).lower()).strip()
+
+
+def make_district_key(state, district):
+    state_key = normalize_geo_name(state)
+    district_key = normalize_geo_name(district)
+    return f"{state_key}|{district_key}" if state_key else district_key
+
+
+def first_property(properties, candidates):
+    for key in candidates:
+        value = properties.get(key)
+        if value not in (None, ""):
+            return value
+    return ""
+
+
+@st.cache_data
+def load_india_district_geojson():
+    path = os.path.join(os.path.dirname(__file__), GEOJSON_RELATIVE_PATH)
+    if not os.path.exists(path):
+        return None
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            geojson = json.load(f)
+    except Exception as e:
+        st.warning(f"Could not load district GeoJSON: {str(e)}")
+        return None
+
+    district_keys = [
+        "district", "District", "DISTRICT", "district_name", "DISTRICT_NAME",
+        "dist_name", "DIST_NAME", "dt_name", "DT_NAME", "dtname", "DTNAME",
+        "NAME_2", "NAME2", "name", "Name", "NAME",
+    ]
+    state_keys = [
+        "state", "State", "STATE", "state_name", "STATE_NAME",
+        "st_nm", "ST_NM", "stname", "STNAME", "NAME_1", "NAME1",
+    ]
+
+    for feature in geojson.get("features", []):
+        properties = feature.setdefault("properties", {})
+        district = first_property(properties, district_keys)
+        state = first_property(properties, state_keys)
+        properties["plotly_key"] = make_district_key(state, district)
+
+    return geojson
+
+
+@st.cache_data
+def build_district_choropleth_frame(frame):
+    if frame.empty or "WQI" not in frame.columns:
+        return pd.DataFrame(columns=["state", "district", "WQI", "plotly_key"])
+
+    district_col = next((c for c in ["district", "District", "district_name"] if c in frame.columns), None)
+    state_col = next((c for c in ["state", "State", "state_name"] if c in frame.columns), None)
+    if district_col is None:
+        return pd.DataFrame(columns=["state", "district", "WQI", "plotly_key"])
+
+    cols = [district_col, "WQI"]
+    if state_col:
+        cols.insert(0, state_col)
+
+    district_df = frame[cols].dropna(subset=[district_col, "WQI"]).copy()
+    if district_df.empty:
+        return pd.DataFrame(columns=["state", "district", "WQI", "plotly_key"])
+
+    rename_map = {district_col: "district"}
+    if state_col:
+        rename_map[state_col] = "state"
+    district_df = district_df.rename(columns=rename_map)
+    if "state" not in district_df.columns:
+        district_df["state"] = ""
+
+    district_df["district"] = district_df["district"].astype(str).str.strip()
+    district_df["state"] = district_df["state"].astype(str).str.strip()
+    district_df = (
+        district_df.groupby(["state", "district"], as_index=False)["WQI"]
+        .mean()
+        .sort_values("WQI", ascending=False)
+    )
+    district_df["plotly_key"] = district_df.apply(
+        lambda row: make_district_key(row["state"], row["district"]),
+        axis=1,
+    )
+    return district_df
 
 
 # ─── Data load ───────────────────────────────────────────────
@@ -841,6 +935,70 @@ with tab2:
                         margin=dict(l=0, r=0, t=30, b=0)
                     )
                     st.plotly_chart(fig2, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True, 'displaylogo': False})
+
+    st.markdown("### District-wise Water Quality Map")
+
+    with st.spinner("Building district choropleth..."):
+        geojson = load_india_district_geojson()
+        district_map_df = build_district_choropleth_frame(filt)
+
+        if geojson is None:
+            st.warning("District GeoJSON is missing. Add `data/geo/india_districts.geojson` to enable the map.")
+        elif district_map_df.empty:
+            st.warning("No district-level WQI data is available for the current filters.")
+        else:
+            geojson_keys = {
+                feature.get("properties", {}).get("plotly_key")
+                for feature in geojson.get("features", [])
+                if feature.get("properties", {}).get("plotly_key")
+            }
+            district_map_df = district_map_df[district_map_df["plotly_key"].isin(geojson_keys)].copy()
+
+            if district_map_df.empty:
+                st.warning("District names could not be matched to the India district boundaries.")
+            else:
+                color_scale = [
+                    [0.0, "#d7efe4"],
+                    [0.35, "#8fcdb2"],
+                    [0.65, "#f3d98b"],
+                    [1.0, "#de7c6b"],
+                ]
+                fig_map = px.choropleth_mapbox(
+                    district_map_df,
+                    geojson=geojson,
+                    locations="plotly_key",
+                    featureidkey="properties.plotly_key",
+                    color="WQI",
+                    color_continuous_scale=color_scale,
+                    range_color=(0, 100),
+                    mapbox_style="carto-positron",
+                    zoom=4,
+                    center={"lat": 20.5, "lon": 80},
+                    opacity=0.9,
+                    custom_data=["district"],
+                    hover_name=None,
+                    hover_data=None,
+                )
+                fig_map.update_traces(
+                    marker_line_color="white",
+                    marker_line_width=0.5,
+                    hovertemplate="<b>%{customdata[0]}</b><br>WQI: %{z:.1f}<extra></extra>",
+                    showscale=False,
+                )
+                fig_map.update_layout(
+                    height=720,
+                    margin=dict(l=0, r=0, t=8, b=0),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    showlegend=False,
+                    coloraxis_showscale=False,
+                    mapbox=dict(style="carto-positron", zoom=4, center=dict(lat=20.5, lon=80)),
+                )
+                st.plotly_chart(
+                    fig_map,
+                    use_container_width=True,
+                    config={"displayModeBar": False, "scrollZoom": True},
+                )
 
                 # Enhanced statistics with visual indicators
                 st.markdown("---")
