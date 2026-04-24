@@ -343,8 +343,7 @@ button[role="tab"][aria-selected="true"] {
 
 
 
-# ─── Color mapping ───────────────────────────────────────────
-# base colors for water quality categories
+
 QUAL_COLORS = {
     "Excellent": "#27ae60", # Green
     "Good":      "#f1c40f", # Yellow
