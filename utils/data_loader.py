@@ -179,7 +179,12 @@ RENAME_MAP = {
     "carbonate (mg/l)": "carbonate",
     "boron (mg/l)": "boron",
     "data acquisition time": "data acquisition time",
+    "date": "data acquisition time",
+    "sampling date": "data acquisition time",
+    "sampling_date": "data acquisition time",
+    "collection date": "data acquisition time",
 }
+
 
 # ── BIS 10500 : 2012 drinking-water standards (for WQI labelling) ─────────
 BIS_STANDARDS = {
@@ -268,8 +273,11 @@ def load_single_csv(path: str, state_code: str = None) -> pd.DataFrame:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # Year / month coercion
-    if "data acquisition time" in df.columns:
-        dt_col = df["data acquisition time"]
+    dt_candidates = ["data acquisition time", "date", "sampling_date", "sampling date"]
+    dt_col_name = next((c for c in dt_candidates if c in df.columns), None)
+    
+    if dt_col_name:
+        dt_col = df[dt_col_name]
         if isinstance(dt_col, pd.DataFrame):
             dt_col = dt_col.iloc[:, 0]
         dt = pd.to_datetime(dt_col, errors="coerce", format="mixed", dayfirst=True)
@@ -277,6 +285,7 @@ def load_single_csv(path: str, state_code: str = None) -> pd.DataFrame:
             df["year"] = dt.dt.year
         if "month" not in df.columns:
             df["month"] = dt.dt.month
+
 
     for col in ["year", "month"]:
         if col in df.columns:
