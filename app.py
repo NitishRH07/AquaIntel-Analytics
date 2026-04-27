@@ -435,9 +435,9 @@ st.sidebar.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.sidebar.info("ℹ️ Filters apply to **Dashboard**, **Historical Trends**, and **Parameter Analysis** tabs only.")
+st.sidebar.info(" Filters apply to **Dashboard**, **Historical Trends**, and **Parameter Analysis** tabs only.")
 
-with st.sidebar.expander("ℹ️ What is WQI?"):
+with st.sidebar.expander(" What is WQI?"):
     st.markdown("""
 **Water Quality Index (WQI)** is a score from **0 to 100**.
 
@@ -542,12 +542,12 @@ st.markdown(f"""
 
 # ─── SECTION: Tab Layout ────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📊 Dashboard",
-    "🗺️ Risk Heatmap",
-    "📈 Historical Trends",
-    "🔬 Parameter Analysis",
-    "🤖 Predict",
-    "📤 Upload Data",
+    "Dashboard",
+    " Risk Heatmap",
+    " Historical Trends",
+    " Parameter Analysis",
+    " Predict",
+    " Upload Data",
 ])
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -738,46 +738,8 @@ with tab1:
             else:
                 st.info("No data for selected filters.")
 
-    # ── 3E: BIS Compliance Heatmap ────────────────────────────────────────────────
-    st.markdown("---")
-    section_header("PARAMETER COMPLIANCE DASHBOARD")
-    st.markdown("**BIS Standard Compliance by State and Parameter**")
-    st.caption("Red = High violation rate | Green = Compliant | Values show % of samples exceeding BIS limits")
 
-    avail_bis = [p for p in BIS_STANDARDS if p in filt.columns]
-    if not filt.empty and len(avail_bis) > 0 and filt["state"].nunique() > 0:
-        with st.spinner("Building compliance heatmap..."):
-            pivot_rows = []
-            for state_n, grp in filt.groupby("state"):
-                row = {"State": state_n}
-                for p in avail_bis:
-                    row[PARAM_LABELS.get(p, p)] = pct_exceeds(grp[p], BIS_STANDARDS[p])
-                pivot_rows.append(row)
-            pivot_df = pd.DataFrame(pivot_rows).set_index("State").dropna(axis=1, how="all")
-
-            if not pivot_df.empty:
-                fig_heat = px.imshow(
-                    pivot_df,
-                    color_continuous_scale="RdYlGn_r",
-                    zmin=0, zmax=100,
-                    text_auto=".0f",
-                    aspect="auto",
-                    title="BIS Standard Compliance by State and Parameter (% Exceeding Limit)",
-                )
-                fig_heat.update_traces(
-                    textfont=dict(size=10),
-                    hovertemplate="<b>%{y}</b><br>%{x}<br><b>%{z:.1f}%</b> samples exceed BIS limit<extra></extra>",
-                )
-                fig_heat = update_chart_layout(fig_heat, height=max(400, len(pivot_df) * 28))
-                fig_heat.update_layout(
-                    coloraxis_colorbar=dict(title="% Exceeding", ticksuffix="%"),
-                    xaxis=dict(tickangle=-35, tickfont=dict(size=10)),
-                )
-                st.plotly_chart(fig_heat, use_container_width=True)
-                with st.expander("📋 View Data Table"):
-                    st.dataframe(pivot_df.round(1), use_container_width=True)
-    else:
-        st.info("Insufficient data for compliance heatmap.")
+   
 
     # ── 3F: River Bar Chart ───────────────────────────────────────────────────────
     st.markdown("---")
