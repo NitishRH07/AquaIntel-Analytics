@@ -703,7 +703,7 @@ with tab1:
   <tbody>{legend_rows}</tbody>
 </table>""", unsafe_allow_html=True)
 
-            with st.expander("📋 View Data Table"):
+            with st.expander(" View Data Table"):
                 st.dataframe(wq_counts, use_container_width=True)
 
     with col_right:
@@ -770,7 +770,7 @@ with tab1:
             yaxis=dict(autorange="reversed"),
         )
         st.plotly_chart(fig_river, use_container_width=True)
-        with st.expander("📋 View Data Table"):
+        with st.expander(" View Data Table"):
             st.dataframe(river_summary, use_container_width=True)
     else:
         st.info("No river data available for current filters.")
@@ -812,7 +812,7 @@ with tab1:
         st.plotly_chart(fig_season, use_container_width=True)
         st.caption("Average WQI by month across all years. June–September = Monsoon Season. "
                    "Higher WQI during monsoon often indicates runoff contamination.")
-        with st.expander("📋 View Data Table"):
+        with st.expander(" View Data Table"):
             st.dataframe(monthly[["Month","WQI"]].rename(columns={"WQI":"Avg WQI"}).round(2),
                          use_container_width=True)
 
@@ -848,7 +848,7 @@ with tab1:
         )
 
     # ── 3I: Help & Glossary ────────────────────────────────────────────────────────
-    with st.expander("📖 Help & Glossary of Terms"):
+    with st.expander("Help & Glossary of Terms"):
         st.markdown("""
 **GLOSSARY OF TERMS**
 
@@ -1156,7 +1156,7 @@ with tab3:
             st.plotly_chart(fig_trend, use_container_width=True)
 
         national_all = trend_df.groupby("year")["WQI"].mean().reset_index()
-        with st.expander("📋 View Data Table"):
+        with st.expander(" View Data Table"):
             st.dataframe(national_all.round(2), use_container_width=True)
 
         # ── 4C: Auto-generated plain English insights ─────────────────────────────
@@ -1184,7 +1184,7 @@ with tab3:
 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
             padding:1.2rem 1.5rem;margin:1rem 0;">
   <div style="font-size:1rem;font-weight:700;color:#0f172a;margin-bottom:0.8rem;">
-    📊 Key Insights
+     Key Insights
   </div>
   <ul style="color:#475569;margin:0;padding-left:1.2rem;line-height:2.2;">
     <li><b>Overall trend:</b> Water quality has been
@@ -1227,7 +1227,7 @@ with tab3:
                 showlegend=False,
             )
             st.plotly_chart(fig_dec, use_container_width=True)
-            with st.expander("📋 View Data Table"):
+            with st.expander(" View Data Table"):
                 st.dataframe(decade_avg.round(2), use_container_width=True)
 
         # ── 4E: State trend ranking table ────────────────────────────────────────
@@ -1374,14 +1374,14 @@ with tab4:
                 strength  = "strong"   if abs(r) > 0.7 else ("moderate" if abs(r) > 0.4 else "weak")
                 direction = "positive" if r > 0 else "negative"
                 st.markdown(
-                    f"📊 **Statistical Relationship:** {sel_a_label} and {sel_b_label} show "
+                    f" **Statistical Relationship:** {sel_a_label} and {sel_b_label} show "
                     f"**{strength} {direction} correlation** (r = {r:.2f}). "
                     f"{'Higher values of both parameters tend to co-occur.' if r > 0.4 else ('Higher X values associate with lower Y values.' if r < -0.4 else 'No strong linear relationship detected.')}"
                 )
             except Exception:
                 pass
 
-            with st.expander("📋 View Data Table"):
+            with st.expander(" View Data Table"):
                 st.dataframe(scatter_d.head(500), use_container_width=True)
 
         # ── 5C: Box Plot — Parameter by State ────────────────────────────────────
@@ -1425,7 +1425,7 @@ with tab4:
                         f"{param_box_label} within safe BIS limits."
                     )
 
-                with st.expander("📋 View Data Table"):
+                with st.expander(" View Data Table"):
                     st.dataframe(box_df.head(500), use_container_width=True)
 
         # ── 5D: Exceedance Timeline ────────────────────────────────────────────────
@@ -1463,7 +1463,7 @@ with tab4:
                         showlegend=False,
                     )
                     st.plotly_chart(fig_exc, use_container_width=True)
-                    with st.expander("📋 View Data Table"):
+                    with st.expander("View Data Table"):
                         st.dataframe(exc_df, use_container_width=True)
 
 
@@ -1670,7 +1670,7 @@ with tab6:
             st.plotly_chart(fig_up, use_container_width=True)
 
             # Summary stats
-            with st.expander("📋 Summary Statistics"):
+            with st.expander(" Summary Statistics"):
                 st.dataframe(new_df.describe().round(2), use_container_width=True)
         else:
             st.warning(
