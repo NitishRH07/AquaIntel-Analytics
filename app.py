@@ -17,7 +17,7 @@ import streamlit as st
 
 from utils.data_loader import (
     load_all_csvs, generate_synthetic_cwc, preprocess,
-    CORE_FEATURES, BIS_STANDARDS,
+    CORE_FEATURES, BIS_STANDARDS, RENAME_MAP,
 )
 from utils.model_utils import SoftVotingHybrid
 
@@ -28,152 +28,448 @@ st.set_page_config(
     layout="wide",
 )
 
-# ─── SECTION: Global CSS (Light Professional Government Theme) ──────────────────
-st.markdown("""
+# ─── SECTION: Theme State Init ──────────────────────────────────────────────────
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = False
+
+# ─── SECTION: Global CSS (Professional Navy / Water Theme) ──────────────────────
+def inject_theme_css(dark: bool):
+    # ── LIGHT: clean white + deep navy accents (presentation-grade) ──
+    # ── DARK:  deep ocean navy palette ──
+    if dark:
+        bg         = "#060d1a"
+        bg2        = "#0d1f38"
+        card_bg    = "#0d1f38"
+        card_bg2   = "#112240"
+        border     = "#1e3a5f"
+        text       = "#e2eaf5"
+        text2      = "#8aadcc"
+        text3      = "#5a7fa0"
+        tab_bg     = "#0d1f38"
+        tab_border = "#1e3a5f"
+        tab_sel    = "#38bdf8"
+        input_bg   = "rgba(255,255,255,0.05)"
+        input_bord = "#1e3a5f"
+        exp_bg     = "#0d1f38"
+        metric_val = "#e2eaf5"
+        metric_lbl = "#8aadcc"
+        card_shad  = "rgba(0,0,0,0.5)"
+        badge_row  = "#0a1628"
+    else:
+        bg         = "#f0f4f9"
+        bg2        = "#ffffff"
+        card_bg    = "#ffffff"
+        card_bg2   = "#f7fafd"
+        border     = "#d6e3f0"
+        text       = "#0a1f3d"
+        text2      = "#2c4a6e"
+        text3      = "#5a7fa0"
+        tab_bg     = "#ffffff"
+        tab_border = "#d6e3f0"
+        tab_sel    = "#1e3a8a"
+        input_bg   = "#ffffff"
+        input_bord = "#b8d0e8"
+        exp_bg     = "#f7fafd"
+        metric_val = "#0a1f3d"
+        metric_lbl = "#2c4a6e"
+        card_shad  = "rgba(10,31,61,0.08)"
+        badge_row  = "#eef4fb"
+
+    st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-html, body, [class*="css"], .stApp {
-    font-family: 'Inter', sans-serif !important;
-    background-color: #f1f5f9 !important;
-    color: #0f172a !important;
-    font-size: 15px !important;
-}
+/* ══ BASE RESET ══════════════════════════════════════════════════════════════ */
+html, body, [class*="css"], .stApp {{
+    font-family: 'Inter', -apple-system, sans-serif !important;
+    background-color: {bg} !important;
+    color: {text} !important;
+    font-size: 14px !important;
+    -webkit-font-smoothing: antialiased !important;
+}}
+.stApp > header,
+[data-testid="stHeader"],
+[data-testid="stToolbar"],
+[data-testid="stDecoration"] {{
+    display: none !important;
+    height: 0 !important;
+}}
+.block-container {{
+    padding-top: 0.25rem !important;
+    padding-left: 1.1rem !important;
+    padding-right: 1.1rem !important;
+    padding-bottom: 2rem !important;
+    background-color: {bg} !important;
+    max-width: 100% !important;
+}}
 
-/* Remove default top padding */
-.stApp > header { display: none !important; }
-.block-container { padding-top: 1rem !important; }
+/* ══ SIDEBAR ═════════════════════════════════════════════════════════════════ */
+[data-testid="stSidebar"] {{
+    background: linear-gradient(180deg, #061A2E 0%, #0A2540 52%, #075985 100%) !important;
+    border-right: 1px solid rgba(202,240,248,0.18) !important;
+    margin-top: 0 !important;
+}}
+[data-testid="stSidebar"] > div {{ padding: 0 !important; }}
+[data-testid="stSidebar"] * {{ color: #EAFBFF !important; }}
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] strong,
+[data-testid="stSidebar"] b {{ color: #ffffff !important; }}
 
-/* ── Sidebar ─────────────────────────────────────────────────────────────── */
-[data-testid="stSidebar"] {
-    background-color: #1e3a5f !important;
-}
-[data-testid="stSidebar"] * { color: #cbd5e1 !important; }
-[data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3, [data-testid="stSidebar"] strong {
+/* Sidebar section labels */
+[data-testid="stSidebar"] p {{
+    color: #D6F3FF !important;
+    font-size: 0.78rem !important;
+    line-height: 1.5 !important;
+}}
+
+/* Sidebar inputs */
+[data-testid="stSidebar"] [data-baseweb="select"] > div {{
+    background-color: rgba(255,255,255,0.12) !important;
+    border: 1px solid rgba(202,240,248,0.36) !important;
     color: #ffffff !important;
-}
-[data-testid="stSidebar"] .stSelectbox label,
-[data-testid="stSidebar"] .stMultiSelect label,
-[data-testid="stSidebar"] .stSlider label,
-[data-testid="stSidebar"] .stTextInput label {
-    color: #94a3b8 !important;
-    text-transform: uppercase !important;
-    font-size: 0.72rem !important;
-    letter-spacing: 0.08em !important;
-    font-weight: 600 !important;
-}
-[data-testid="stSidebar"] [data-baseweb="select"] > div,
-[data-testid="stSidebar"] [data-baseweb="input"] > div {
-    background-color: rgba(255,255,255,0.08) !important;
-    border-color: rgba(255,255,255,0.15) !important;
-    color: #e2e8f0 !important;
-}
-[data-testid="stSidebar"] span[data-baseweb="tag"] {
-    background-color: rgba(30,64,175,0.4) !important;
-    color: #bfdbfe !important;
-    border: 1px solid rgba(96,165,250,0.3) !important;
+    border-radius: 8px !important;
+}}
+[data-testid="stSidebar"] [data-baseweb="input"] > div {{
+    background-color: rgba(255,255,255,0.96) !important;
+    border: 1px solid rgba(202,240,248,0.75) !important;
+    color: #061A2E !important;
+    border-radius: 8px !important;
+}}
+[data-testid="stSidebar"] input {{
+    color: #061A2E !important;
+    -webkit-text-fill-color: #061A2E !important;
+    background: transparent !important;
+}}
+[data-testid="stSidebar"] input::placeholder {{ color: #31546A !important; }}
+
+/* Sidebar multiselect tags */
+[data-testid="stSidebar"] span[data-baseweb="tag"] {{
+    background: rgba(202,240,248,0.18) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(202,240,248,0.38) !important;
     border-radius: 20px !important;
-}
-[data-testid="stSidebar"] .stExpander {
-    background-color: rgba(255,255,255,0.05) !important;
-    border: 1px solid rgba(255,255,255,0.1) !important;
+    font-size: 0.75rem !important;
+}}
+
+/* Sidebar slider track */
+[data-testid="stSidebar"] [data-testid="stSlider"] div[role="slider"] {{
+    background-color: #38bdf8 !important;
+}}
+
+/* Sidebar expander */
+[data-testid="stSidebar"] [data-testid="stExpander"] {{
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(202,240,248,0.28) !important;
+    border-radius: 10px !important;
+}}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary p {{
+    color: #EAFBFF !important;
+    font-weight: 600 !important;
+}}
+
+/* Sidebar info box */
+[data-testid="stSidebar"] [data-testid="stInfo"] {{
+    background: rgba(255,255,255,0.10) !important;
+    border: 1px solid rgba(202,240,248,0.28) !important;
     border-radius: 8px !important;
-}
-[data-testid="stSidebar"] .stExpander summary p { color: #93c5fd !important; }
+    color: #7dd3fc !important;
+}}
+[data-testid="stSidebar"] [data-testid="stInfo"] p {{
+    color: #D6F3FF !important;
+    font-size: 0.78rem !important;
+}}
 
-/* Reset button in sidebar — red */
-[data-testid="stSidebar"] .stButton > button {
-    background-color: #dc2626 !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 8px !important;
-    font-weight: 700 !important;
-}
-[data-testid="stSidebar"] .stButton > button:hover {
-    background-color: #b91c1c !important;
-}
-
-/* ── Main content headings & text ────────────────────────────────────────── */
-h1, h2, h3, h4, h5, h6 { color: #0f172a !important; }
-.stMarkdown p { color: #475569 !important; }
-
-/* ── Tabs ────────────────────────────────────────────────────────────────── */
-div[role="tablist"] {
+/* Sidebar buttons — base */
+[data-testid="stSidebar"] .stButton > button {{
     background: #ffffff !important;
-    border-bottom: 2px solid #e2e8f0 !important;
-    border-radius: 8px 8px 0 0 !important;
-}
-button[role="tab"] {
+    color: #061A2E !important;
+    border: 1px solid rgba(202,240,248,0.36) !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+    letter-spacing: 0.02em !important;
+    transition: all 0.2s !important;
+}}
+[data-testid="stSidebar"] .stButton > button *,
+[data-testid="stSidebar"] .stButton > button p,
+[data-testid="stSidebar"] .stButton > button span,
+[data-testid="stSidebar"] .stButton > button div {{
+    color: #061A2E !important;
+    -webkit-text-fill-color: #061A2E !important;
+}}
+[data-testid="stSidebar"] .stButton > button:hover {{
+    background: #F1FAFF !important;
+    color: #061A2E !important;
+}}
+
+/* Sidebar warning */
+[data-testid="stSidebar"] [data-testid="stWarning"] {{
+    background: rgba(245,158,11,0.1) !important;
+    border-left: 3px solid #f59e0b !important;
+    border-radius: 6px !important;
+}}
+[data-testid="stSidebar"] [data-testid="stWarning"] p {{
+    color: #fcd34d !important;
+    font-size: 0.76rem !important;
+}}
+
+/* ══ MAIN CONTENT TEXT ════════════════════════════════════════════════════════ */
+h1 {{ color: {text} !important; font-weight: 800 !important; letter-spacing: -0.03em !important; }}
+h2 {{ color: {text} !important; font-weight: 700 !important; }}
+h3 {{ color: {text} !important; font-weight: 600 !important; }}
+h4, h5, h6 {{ color: {text} !important; }}
+p, .stMarkdown p {{ color: {text2} !important; line-height: 1.7 !important; }}
+label, .stTextInput label, .stNumberInput label,
+.stSelectbox label, .stSlider label,
+.stMultiSelect label {{ color: {text2} !important; font-weight: 500 !important; font-size: 0.82rem !important; }}
+.stCaption, small {{ color: {text3} !important; font-size: 0.8rem !important; }}
+hr {{ border-color: {border} !important; opacity: 0.6 !important; }}
+
+[data-testid="stSidebar"] .stCaption,
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+[data-testid="stSidebar"] small,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] .stMarkdown p,
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {{
+    color: #D6F3FF !important;
+}}
+[data-testid="stSidebar"] [data-baseweb="select"] span,
+[data-testid="stSidebar"] [data-baseweb="select"] div,
+[data-testid="stSidebar"] [data-baseweb="select"] svg {{
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}}
+[data-testid="stSidebar"] [data-testid="stSlider"] * {{
+    color: #EAFBFF !important;
+}}
+
+/* ══ INPUT FIELDS ════════════════════════════════════════════════════════════ */
+[data-baseweb="input"] > div,
+.stNumberInput input,
+.stTextInput input {{
+    background-color: {input_bg} !important;
+    border: 1px solid {input_bord} !important;
+    border-radius: 8px !important;
+    color: {text} !important;
+    font-size: 0.88rem !important;
+}}
+[data-baseweb="select"] > div {{
+    background-color: {input_bg} !important;
+    border: 1px solid {input_bord} !important;
+    border-radius: 8px !important;
+    color: {text} !important;
+}}
+input::placeholder {{ color: {text3} !important; }}
+
+/* ══ TABS ════════════════════════════════════════════════════════════════════ */
+div[role="tablist"] {{
+    background: {tab_bg} !important;
+    border-bottom: 2px solid {tab_border} !important;
+    border-radius: 10px 10px 0 0 !important;
+    padding: 0 0.5rem !important;
+    gap: 0.2rem !important;
+}}
+button[role="tab"] {{
     background: transparent !important;
     border: none !important;
-    color: #64748b !important;
+    border-radius: 6px 6px 0 0 !important;
+    color: {text3} !important;
     font-weight: 500 !important;
-    font-size: 0.88rem !important;
-    padding: 0.75rem 1.2rem !important;
-}
-button[role="tab"][aria-selected="true"] {
-    color: #1e40af !important;
+    font-size: 0.84rem !important;
+    padding: 0.7rem 1.1rem !important;
+    letter-spacing: 0.01em !important;
+    transition: all 0.15s !important;
+}}
+button[role="tab"][aria-selected="true"] {{
+    color: {tab_sel} !important;
     font-weight: 700 !important;
-    border-bottom: 3px solid #1e40af !important;
-}
-button[role="tab"]:hover { color: #1e40af !important; background: #f8fafc !important; }
+    border-bottom: 3px solid {tab_sel} !important;
+    background: {'rgba(56,189,248,0.06)' if dark else 'rgba(30,58,138,0.05)'} !important;
+}}
+button[role="tab"]:hover {{ color: {tab_sel} !important; }}
 
-/* ── Primary Buttons ─────────────────────────────────────────────────────── */
-.stButton > button {
-    background-color: #1e40af !important;
+/* ══ BUTTONS ═════════════════════════════════════════════════════════════════ */
+.stButton > button {{
+    background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%) !important;
     color: #ffffff !important;
     border: none !important;
     border-radius: 8px !important;
     font-weight: 600 !important;
-    padding: 0.5rem 1.5rem !important;
+    font-size: 0.84rem !important;
+    padding: 0.55rem 1.6rem !important;
+    letter-spacing: 0.02em !important;
+    box-shadow: 0 2px 8px rgba(30,58,138,0.3) !important;
     transition: all 0.2s ease !important;
-}
-.stButton > button:hover {
-    background-color: #1d4ed8 !important;
+}}
+.stButton > button:hover {{
+    background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%) !important;
     transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(30,64,175,0.3) !important;
-}
-.stDownloadButton > button, [data-testid="stDownloadButton"] > button {
-    background-color: #16a34a !important;
+    box-shadow: 0 6px 16px rgba(30,58,138,0.4) !important;
+}}
+.stDownloadButton > button,
+[data-testid="stDownloadButton"] > button {{
+    background: linear-gradient(135deg, #15803d 0%, #16a34a 100%) !important;
     color: #ffffff !important;
     border: none !important;
     border-radius: 8px !important;
     font-weight: 600 !important;
-}
+    box-shadow: 0 2px 8px rgba(22,163,74,0.3) !important;
+}}
 
-/* ── Cards / bordered containers ─────────────────────────────────────────── */
-[data-testid="stVerticalBlockBorderWrapper"] {
-    background-color: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
+/* ══ CARDS / BORDERED CONTAINERS ════════════════════════════════════════════ */
+[data-testid="stVerticalBlockBorderWrapper"] {{
+    background-color: {card_bg} !important;
+    border: 1px solid {border} !important;
+    border-radius: 14px !important;
+    box-shadow: 0 2px 12px {card_shad} !important;
+    padding: 0.2rem !important;
+}}
+
+/* ══ METRICS ═════════════════════════════════════════════════════════════════ */
+[data-testid="stMetricValue"] {{ color: {metric_val} !important; font-weight: 800 !important; }}
+[data-testid="stMetricLabel"] {{ color: {metric_lbl} !important; font-weight: 500 !important; }}
+[data-testid="metric-container"] {{
+    background: {card_bg} !important;
+    border: 1px solid {border} !important;
     border-radius: 12px !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
-}
-[data-testid="stDataFrame"] { border-radius: 8px !important; }
-[data-testid="stMetricValue"] { color: #0f172a !important; }
-[data-testid="stMetricLabel"] { color: #475569 !important; }
+    padding: 1rem !important;
+}}
 
-/* ── Expanders ───────────────────────────────────────────────────────────── */
-.streamlit-expanderHeader {
-    background-color: #f8fafc !important;
-    border: 1px solid #e2e8f0 !important;
+/* ══ DATAFRAMES ══════════════════════════════════════════════════════════════ */
+[data-testid="stDataFrame"] {{ border-radius: 10px !important; overflow: hidden !important; }}
+[data-testid="stDataFrame"] div {{ color: {text} !important; }}
+[data-testid="stDataFrame"] th {{
+    background: {tab_bg} !important;
+    color: {text} !important;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+    border-bottom: 2px solid {border} !important;
+}}
+
+/* ══ EXPANDERS ═══════════════════════════════════════════════════════════════ */
+.streamlit-expanderHeader {{
+    background-color: {exp_bg} !important;
+    border: 1px solid {border} !important;
     border-radius: 8px !important;
-    color: #475569 !important;
-    font-size: 0.85rem !important;
-}
-.streamlit-expanderContent {
-    background-color: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
-}
+    color: {text2} !important;
+    font-size: 0.84rem !important;
+    font-weight: 500 !important;
+}}
+.streamlit-expanderContent {{
+    background-color: {card_bg} !important;
+    border: 1px solid {border} !important;
+    border-top: none !important;
+    color: {text} !important;
+}}
 
-/* ── File uploader & alerts ──────────────────────────────────────────────── */
-[data-testid="stFileUploadDropzone"] {
-    background-color: #f8fafc !important;
-    border: 2px dashed #cbd5e1 !important;
-}
-.stAlert { border-radius: 8px !important; }
+/* ══ FILE UPLOADER ═══════════════════════════════════════════════════════════ */
+[data-testid="stFileUploadDropzone"] {{
+    background: {'rgba(56,189,248,0.04)' if dark else '#f0f7ff'} !important;
+    border: 2px dashed {'rgba(56,189,248,0.3)' if dark else '#93c5fd'} !important;
+    border-radius: 12px !important;
+    color: {text2} !important;
+}}
+
+/* ══ ALERTS ══════════════════════════════════════════════════════════════════ */
+.stAlert {{ border-radius: 10px !important; }}
+[data-testid="stSuccess"] {{
+    background: {'rgba(22,163,74,0.12)' if dark else '#f0fdf4'} !important;
+    border: 1px solid {'rgba(22,163,74,0.3)' if dark else '#86efac'} !important;
+    border-radius: 10px !important;
+    color: {'#86efac' if dark else '#15803d'} !important;
+}}
+[data-testid="stError"] {{
+    background: {'rgba(220,38,38,0.12)' if dark else '#fef2f2'} !important;
+    border: 1px solid {'rgba(220,38,38,0.3)' if dark else '#fca5a5'} !important;
+    border-radius: 10px !important;
+    color: {'#fca5a5' if dark else '#b91c1c'} !important;
+}}
+[data-testid="stWarning"] {{
+    background: {'rgba(245,158,11,0.12)' if dark else '#fffbeb'} !important;
+    border: 1px solid {'rgba(245,158,11,0.3)' if dark else '#fde68a'} !important;
+    border-radius: 10px !important;
+}}
+[data-testid="stInfo"] {{
+    background: {'rgba(56,189,248,0.1)' if dark else '#eff6ff'} !important;
+    border: 1px solid {'rgba(56,189,248,0.25)' if dark else '#bfdbfe'} !important;
+    border-radius: 10px !important;
+}}
+
+/* ══ DROPDOWN MENUS ══════════════════════════════════════════════════════════ */
+[data-baseweb="popover"],
+[data-baseweb="menu"] {{
+    background-color: {card_bg} !important;
+    border: 1px solid {border} !important;
+    border-radius: 10px !important;
+    box-shadow: 0 8px 24px {card_shad} !important;
+}}
+[data-baseweb="option"] {{
+    background-color: {card_bg} !important;
+    color: {text} !important;
+    font-size: 0.85rem !important;
+}}
+[data-baseweb="option"]:hover {{
+    background-color: {'rgba(56,189,248,0.1)' if dark else '#eff6ff'} !important;
+}}
+
+/* ══ SPINNER ═════════════════════════════════════════════════════════════════ */
+[data-testid="stSpinner"] p {{ color: {text2} !important; }}
+
+/* Upload risk module */
+.risk-hero {{
+    background: linear-gradient(135deg, #0A2540 0%, #0077B6 58%, #00B4D8 100%);
+    border: 1px solid rgba(202,240,248,0.25);
+    border-radius: 14px;
+    box-shadow: 0 12px 30px rgba(10,37,64,0.18);
+    padding: 1.3rem 1.5rem;
+    margin-bottom: 1rem;
+}}
+.risk-hero h3 {{
+    color: #CAF0F8 !important;
+    margin: 0 0 0.25rem 0 !important;
+}}
+.risk-hero p {{
+    color: rgba(255,255,255,0.86) !important;
+    margin: 0 !important;
+}}
+.risk-legend {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    margin: 0.4rem 0 0.8rem 0;
+}}
+.risk-legend span {{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: {text2};
+    font-size: 0.84rem;
+    font-weight: 600;
+}}
+.risk-dot {{
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    display: inline-block;
+}}
+.stApp .stButton > button {{
+    background: #ffffff !important;
+    color: #0A2540 !important;
+    border: 1px solid #b8d0e8 !important;
+    box-shadow: 0 2px 8px rgba(10,37,64,0.12) !important;
+}}
+.stApp .stButton > button:hover {{
+    background: #F1FAFF !important;
+    color: #0A2540 !important;
+    border-color: #0077B6 !important;
+}}
 </style>
 """, unsafe_allow_html=True)
+
+inject_theme_css(st.session_state.dark_mode)
 
 # ─── SECTION: Constants ─────────────────────────────────────────────────────────
 QUAL_COLORS = {
@@ -216,22 +512,28 @@ MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov"
 # ─── SECTION: Helper Functions ──────────────────────────────────────────────────
 
 def update_chart_layout(fig, height=450):
-    """Apply consistent light-theme layout to every Plotly chart."""
+    """Apply consistent theme-aware layout to every Plotly chart."""
+    dark = st.session_state.get("dark_mode", False)
+    paper = "#1e293b" if dark else "#ffffff"
+    plot  = "#0f172a" if dark else "#f8fafc"
+    grid  = "#334155" if dark else "#e2e8f0"
+    txt   = "#f1f5f9" if dark else "#0f172a"
+    txt2  = "#94a3b8" if dark else "#475569"
     fig.update_layout(
-        paper_bgcolor="#ffffff",
-        plot_bgcolor="#f8fafc",
-        font=dict(color="#0f172a", family="Inter, sans-serif", size=13),
-        title=dict(font=dict(color="#0f172a", size=16), x=0, xanchor="left"),
-        legend=dict(font=dict(color="#475569", size=12), bgcolor="rgba(0,0,0,0)"),
+        paper_bgcolor=paper,
+        plot_bgcolor=plot,
+        font=dict(color=txt, family="Inter, sans-serif", size=13),
+        title=dict(font=dict(color=txt, size=16), x=0, xanchor="left"),
+        legend=dict(font=dict(color=txt2, size=12), bgcolor="rgba(0,0,0,0)"),
         xaxis=dict(
-            gridcolor="#e2e8f0", zerolinecolor="#e2e8f0",
-            tickfont=dict(color="#475569", size=12),
-            title_font=dict(color="#0f172a", size=13),
+            gridcolor=grid, zerolinecolor=grid,
+            tickfont=dict(color=txt2, size=12),
+            title_font=dict(color=txt, size=13),
         ),
         yaxis=dict(
-            gridcolor="#e2e8f0", zerolinecolor="#e2e8f0",
-            tickfont=dict(color="#475569", size=12),
-            title_font=dict(color="#0f172a", size=13),
+            gridcolor=grid, zerolinecolor=grid,
+            tickfont=dict(color=txt2, size=12),
+            title_font=dict(color=txt, size=13),
         ),
         margin=dict(l=20, r=20, t=55, b=20),
         height=height,
@@ -291,8 +593,10 @@ def get_nearest_stations(df, lat, lon, n=3):
 
 def section_header(text):
     """Render an uppercase section divider label."""
+    dark = st.session_state.get("dark_mode", False)
+    col  = "#64748b" if dark else "#94a3b8"
     st.markdown(
-        f'<div style="font-size:0.72rem;font-weight:700;color:#94a3b8;'
+        f'<div style="font-size:0.72rem;font-weight:700;color:{col};'
         f'text-transform:uppercase;letter-spacing:0.1em;margin:1.4rem 0 0.6rem 0;">'
         f'{text}</div>',
         unsafe_allow_html=True,
@@ -302,6 +606,11 @@ def section_header(text):
 def kpi_card(label, value, sub, color="#0f172a", badge=None,
              badge_color="#16a34a", badge_bg="#dcfce7", delta_text="",
              delta_color="#94a3b8"):
+    dark = st.session_state.get("dark_mode", False)
+    card_bg  = "#1e293b" if dark else "#ffffff"
+    card_brd = "#334155" if dark else "#e2e8f0"
+    lbl_col  = "#94a3b8" if dark else "#64748b"
+    sub_col  = "#94a3b8" if dark else "#64748b"
     badge_html = (
         f'<span style="background:{badge_bg};color:{badge_color};font-size:0.68rem;'
         f'font-weight:700;padding:2px 9px;border-radius:20px;margin-left:6px;">'
@@ -312,12 +621,12 @@ def kpi_card(label, value, sub, color="#0f172a", badge=None,
         f'{delta_text}</div>'
     ) if delta_text else ""
     return f"""
-<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;
+<div style="background:{card_bg};border:1px solid {card_brd};border-radius:12px;
             padding:1.2rem 1.4rem;box-shadow:0 2px 8px rgba(0,0,0,0.06);height:100%;">
-  <div style="font-size:0.72rem;font-weight:600;color:#64748b;text-transform:uppercase;
+  <div style="font-size:0.72rem;font-weight:600;color:{lbl_col};text-transform:uppercase;
               letter-spacing:0.08em;margin-bottom:0.6rem;">{label}</div>
   <div style="font-size:2.4rem;font-weight:800;color:{color};line-height:1.1;">{value}</div>
-  <div style="font-size:0.82rem;color:#64748b;margin-top:0.4rem;">{sub}{badge_html}</div>
+  <div style="font-size:0.82rem;color:{sub_col};margin-top:0.4rem;">{sub}{badge_html}</div>
   {delta_html}
 </div>"""
 
@@ -393,6 +702,197 @@ def build_district_choropleth_frame(frame):
     return district_df
 
 
+UPLOAD_COLUMN_CANDIDATES = {
+    "district": [
+        "district", "districtname", "district_name", "location", "locationname",
+        "station", "stationname", "monitoringstation", "samplinglocation", "place",
+    ],
+    "pH": ["ph", "potentialofhydrogenph", "potentialofhydrogen", "phvalue", "phlevel"],
+    "conductivity": [
+        "conductivity", "electricalconductivity", "electricalconductivityuscm",
+        "electricalconductivitymicrosiemenscm", "ec", "ecuscm", "specificconductance",
+        "specificconductivity",
+    ],
+    "nitrate": [
+        "nitrate", "nitratemgl", "nitrates", "no3", "no3n", "nitraten",
+        "nitratenmgnl", "nitritennitraten", "nitritennitratenmgnl",
+    ],
+    "latitude": ["latitude", "lat", "y", "gpslatitude"],
+    "longitude": ["longitude", "lon", "long", "lng", "x", "gpslongitude"],
+}
+
+DISTRICT_COORDINATES = {
+    "anantapur": (14.6819, 77.6006), "anantapuramu": (14.6819, 77.6006),
+    "annamayya": (14.2400, 78.7500), "chittoor": (13.2172, 79.1003),
+    "cuddapah": (14.4673, 78.8242), "kadapa": (14.4673, 78.8242),
+    "ysr": (14.4673, 78.8242), "east godavari": (17.0005, 81.8040),
+    "eluru": (16.7107, 81.0952), "guntur": (16.3067, 80.4365),
+    "kakinada": (16.9891, 82.2475), "konaseema": (16.5787, 82.0061),
+    "krishna": (16.6100, 80.7214), "kurnool": (15.8281, 78.0373),
+    "manyam": (18.7500, 83.4500), "nandyal": (15.4786, 78.4831),
+    "nellore": (14.4426, 79.9865), "spsr nellore": (14.4426, 79.9865),
+    "ntr": (16.5062, 80.6480), "palnadu": (16.2350, 79.7400),
+    "prakasam": (15.3485, 79.5603), "srikakulam": (18.2949, 83.8938),
+    "sri sathya sai": (14.1670, 77.8110), "tirupati": (13.6288, 79.4192),
+    "visakhapatnam": (17.6868, 83.2185), "anakapalli": (17.6913, 83.0039),
+    "alluri sitharama raju": (17.8500, 82.6500), "vizianagaram": (18.1067, 83.3956),
+    "west godavari": (16.9174, 81.3399), "adilabad": (19.6641, 78.5320),
+    "bhadradri kothagudem": (17.5544, 80.6197), "hyderabad": (17.3850, 78.4867),
+    "jagtial": (18.7909, 78.9119), "jayashankar bhupalpally": (18.4294, 79.8634),
+    "jogulamba gadwal": (16.2350, 77.7956), "kamareddy": (18.3205, 78.3370),
+    "karimnagar": (18.4386, 79.1288), "khammam": (17.2473, 80.1514),
+    "mahbubnagar": (16.7375, 78.0081), "medak": (18.0451, 78.2608),
+    "nalgonda": (17.0575, 79.2684), "nizamabad": (18.6725, 78.0941),
+    "rangareddy": (17.3891, 78.0302), "sangareddy": (17.6248, 78.0867),
+    "siddipet": (18.1018, 78.8520), "suryapet": (17.1405, 79.6236),
+    "warangal": (17.9689, 79.5941),
+}
+
+
+def normalize_upload_column(value):
+    return re.sub(r"[^a-z0-9]+", "", str(value).lower())
+
+
+def find_upload_column(columns, logical_name):
+    normalized = {normalize_upload_column(c): c for c in columns}
+    for candidate in UPLOAD_COLUMN_CANDIDATES[logical_name]:
+        key = normalize_upload_column(candidate)
+        if key in normalized:
+            return normalized[key]
+    for col in columns:
+        key = normalize_upload_column(col)
+        if any(normalize_upload_column(candidate) in key for candidate in UPLOAD_COLUMN_CANDIDATES[logical_name]):
+            return col
+    return None
+
+
+def find_upload_parameter_columns(columns):
+    alias_map = {}
+    exact_rename_keys = {normalize_upload_column(raw_name) for raw_name in RENAME_MAP}
+    for raw_name, canonical in RENAME_MAP.items():
+        if canonical in BIS_STANDARDS:
+            alias_map[normalize_upload_column(raw_name)] = canonical
+    for canonical in BIS_STANDARDS:
+        alias_map[normalize_upload_column(canonical)] = canonical
+        alias_map[normalize_upload_column(PARAM_LABELS.get(canonical, canonical))] = canonical
+
+    matched = {}
+    for col in columns:
+        key = normalize_upload_column(col)
+        canonical = alias_map.get(key)
+        if canonical is None and key in exact_rename_keys:
+            continue
+        if canonical is None:
+            canonical = next(
+                (param for alias, param in alias_map.items() if len(alias) >= 4 and alias in key),
+                None,
+            )
+        if canonical and canonical not in matched:
+            matched[canonical] = col
+    return matched
+
+
+def parameter_violation_mask(series, standard):
+    values = pd.to_numeric(series, errors="coerce")
+    mask = pd.Series(False, index=values.index)
+    if "min" in standard:
+        mask = mask | (values < standard["min"])
+    if "max" in standard:
+        mask = mask | (values > standard["max"])
+    return mask.fillna(False)
+
+
+def read_uploaded_water_file(uploaded_file):
+    name = uploaded_file.name.lower()
+    try:
+        if name.endswith(".csv"):
+            return pd.read_csv(uploaded_file)
+        if name.endswith((".xlsx", ".xls")):
+            return pd.read_excel(uploaded_file)
+    except Exception as e:
+        st.error(f"Could not read uploaded file: {e}")
+        return pd.DataFrame()
+    raise ValueError("Unsupported file format. Upload a CSV, XLSX, or XLS file.")
+
+
+def prepare_uploaded_risk_data(raw_df):
+    if raw_df.empty:
+        return pd.DataFrame(), {}, ["Uploaded file has no rows."]
+
+    column_map = {
+        key: find_upload_column(raw_df.columns, key)
+        for key in ["district", "pH", "latitude", "longitude"]
+    }
+    missing = []
+    if column_map.get("district") is None:
+        missing.append("district")
+    if column_map.get("pH") is None:
+        missing.append("pH")
+    if missing:
+        return pd.DataFrame(), column_map, missing
+
+    out = pd.DataFrame({
+        "District": raw_df[column_map["district"]].astype(str).str.strip(),
+        "pH": pd.to_numeric(raw_df[column_map["pH"]], errors="coerce"),
+    })
+    out["District"] = out["District"].replace({"": np.nan, "nan": np.nan, "None": np.nan})
+
+    if column_map.get("latitude") and column_map.get("longitude"):
+        out["latitude"] = pd.to_numeric(raw_df[column_map["latitude"]], errors="coerce")
+        out["longitude"] = pd.to_numeric(raw_df[column_map["longitude"]], errors="coerce")
+    else:
+        out["latitude"] = np.nan
+        out["longitude"] = np.nan
+
+    valid_counts = out["pH"].notna().astype(int)
+    risk_score = ((out["pH"] < 6.5) | (out["pH"] > 8.5)).fillna(False).astype(int)
+    out["Risk_Score"] = risk_score.astype(int)
+    out["Tested_Parameters"] = valid_counts.astype(int)
+    out["Missing_Parameters"] = (1 - valid_counts).astype(int)
+    out["Violated_Parameters"] = np.where(out["Risk_Score"] > 0, "pH", "")
+    out["Risk_Level"] = np.select(
+        [valid_counts == 0, out["Risk_Score"] > 0],
+        ["Unknown", "Unsafe"],
+        default="Safe",
+    )
+    return out, column_map, []
+
+
+def build_uploaded_district_risk_frame(risk_df):
+    valid = risk_df.dropna(subset=["District"]).copy()
+    if valid.empty:
+        return pd.DataFrame(columns=[
+            "District", "pH", "Risk_Level", "Risk_Score", "Tested_Parameters",
+            "Violated_Parameters", "latitude", "longitude", "Samples",
+        ])
+    grouped = valid.groupby("District", as_index=False).agg(
+        pH=("pH", "mean"),
+        latitude=("latitude", "mean"),
+        longitude=("longitude", "mean"),
+        Samples=("Risk_Level", "size"),
+        Tested_Parameters=("Tested_Parameters", "sum"),
+    )
+    grouped["Risk_Score"] = ((grouped["pH"] < 6.5) | (grouped["pH"] > 8.5)).fillna(False).astype(int)
+    grouped["Violated_Parameters"] = np.where(grouped["Risk_Score"] > 0, "pH", "")
+    grouped["Risk_Level"] = np.select(
+        [grouped["pH"].isna(), grouped["Risk_Score"] > 0],
+        ["Unknown", "Unsafe"],
+        default="Safe",
+    )
+    needs_coords = grouped["latitude"].isna() | grouped["longitude"].isna()
+    if needs_coords.any():
+        mapped = grouped.loc[needs_coords, "District"].map(
+            lambda name: DISTRICT_COORDINATES.get(normalize_geo_name(name))
+        )
+        grouped.loc[needs_coords, "latitude"] = mapped.map(
+            lambda coords: coords[0] if isinstance(coords, tuple) else np.nan
+        )
+        grouped.loc[needs_coords, "longitude"] = mapped.map(
+            lambda coords: coords[1] if isinstance(coords, tuple) else np.nan
+        )
+    return grouped
+
+
 # ─── SECTION: Data & Model Loading ─────────────────────────────────────────────
 @st.cache_data
 def load_data():
@@ -428,16 +928,22 @@ models     = load_models()
 # ─── SECTION: Sidebar ───────────────────────────────────────────────────────────
 st.sidebar.markdown("""
 <div style="padding:1.2rem 0 0.8rem 0;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:1rem;">
-  <div style="font-size:1.4rem;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">💧 AquaIntel</div>
-  <div style="font-size:0.72rem;color:#93c5fd;margin-top:2px;font-weight:500;letter-spacing:0.05em;">
-    GOVERNMENT WATER QUALITY PORTAL
+  <div style="font-size:1.4rem;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">AquaIntel</div>
+  <div style="font-size:0.72rem;color:#CAF0F8;margin-top:2px;font-weight:700;letter-spacing:0.05em;">
+    WATER QUALITY PORTAL
   </div>
 </div>
 """, unsafe_allow_html=True)
 
-st.sidebar.info(" Filters apply to **Dashboard**, **Historical Trends**, and **Parameter Analysis** tabs only.")
+# ── Dark / Light mode toggle ────────────────────────────────────────────────────
+toggle_label = "Switch to Light Mode" if st.session_state.dark_mode else "Switch to Dark Mode"
+if st.sidebar.button(toggle_label, use_container_width=True, key="theme_toggle"):
+    st.session_state.dark_mode = not st.session_state.dark_mode
+    st.rerun()
 
-with st.sidebar.expander(" What is WQI?"):
+st.sidebar.info("Filters apply to Dashboard, Historical Trends, and Parameter Analysis tabs only.")
+
+with st.sidebar.expander("What is WQI?"):
     st.markdown("""
 **Water Quality Index (WQI)** is a score from **0 to 100**.
 
@@ -445,24 +951,94 @@ with st.sidebar.expander(" What is WQI?"):
 
 | Score   | Category      |
 |---------|---------------|
-| 0–25    | 🟢 Excellent  |
-| 25–50   | 🔵 Good       |
-| 50–75   | 🟡 Poor       |
-| 75–100  | 🔴 Very Poor  |
+| 0–25    | Excellent  |
+| 25–50   | Good       |
+| 50–75   | Poor       |
+| 75–100  | Very Poor  |
 
 *Standard: BIS 10500:2012 (Indian Drinking Water Standard)*
 """)
 
 st.sidebar.markdown("---")
 
-# Search
+# ── SEARCH SECTION ──────────────────────────────────────────────────────────────
 st.sidebar.markdown(
-    '<p style="color:#94a3b8;font-size:0.72rem;letter-spacing:0.08em;'
-    'font-weight:600;text-transform:uppercase;margin-bottom:4px;">SEARCH</p>',
+    '<p style="color:#CAF0F8;font-size:0.72rem;letter-spacing:0.08em;'
+    'font-weight:600;text-transform:uppercase;margin-bottom:4px;">LOCATION SEARCH</p>',
     unsafe_allow_html=True,
 )
+st.sidebar.caption("Search by District, Tehsil, Block, Village, or River to get water quality info.")
+
 search_query = st.sidebar.text_input(
-    "Search", placeholder="Location, State...", label_visibility="collapsed")
+    "Search Location", placeholder="Enter District, River, Village...", label_visibility="collapsed",
+    key="location_search_input")
+
+if search_query and search_query.strip():
+    q = search_query.strip().lower()
+    # Identify which columns to search across
+    search_cols = []
+    for c in ["district", "District", "tehsil", "Tehsil", "block", "Block",
+               "village", "Village", "River", "river_name", "station_name", "station", "state"]:
+        if c in df.columns:
+            search_cols.append(c)
+
+    if search_cols:
+        mask = pd.Series([False] * len(df), index=df.index)
+        for col in search_cols:
+            mask = mask | df[col].astype(str).str.lower().str.contains(q, na=False)
+        search_results = df[mask]
+    else:
+        search_results = pd.DataFrame()
+
+    if not search_results.empty:
+        avg_ph  = search_results["pH"].mean() if "pH" in search_results.columns else None
+        avg_wqi = search_results["WQI"].mean() if "WQI" in search_results.columns else None
+        safe_pct_s = (search_results["is_safe"].mean() * 100) if "is_safe" in search_results.columns else None
+        n_records = len(search_results)
+
+        # Verdict
+        if avg_wqi is not None:
+            if avg_wqi < 50:
+                verdict_s, v_color = "SAFE", "#ffffff"
+                v_bg = "#000000"
+            else:
+                verdict_s, v_color = "NOT SAFE", "#dc2626"
+                v_bg = "#fee2e2"
+        else:
+            verdict_s, v_color, v_bg = "UNKNOWN", "#94a3b8", "#f1f5f9"
+
+        ph_str  = f"{avg_ph:.2f}" if avg_ph is not None else "N/A"
+        wqi_str = f"{avg_wqi:.1f}" if avg_wqi is not None else "N/A"
+        sp_str  = f"{safe_pct_s:.1f}%" if safe_pct_s is not None else "N/A"
+
+        st.sidebar.markdown(f"""
+<div style="background:#1e3a5f;border:1px solid rgba(255,255,255,0.15);border-radius:10px;
+            padding:0.9rem 1rem;margin-top:0.5rem;">
+  <div style="font-size:0.7rem;color:#CAF0F8;font-weight:700;text-transform:uppercase;
+              letter-spacing:0.05em;margin-bottom:6px;">Search Result — {n_records} records</div>
+  <div style="background:{v_bg};border-radius:6px;padding:6px 10px;margin-bottom:8px;
+              text-align:center;">
+    <span style="font-size:1rem;font-weight:800;color:{v_color};">{verdict_s}</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+    <div style="background:rgba(255,255,255,0.05);border-radius:6px;padding:6px 8px;">
+      <div style="font-size:0.65rem;color:#CAF0F8;font-weight:700;">pH</div>
+      <div style="font-size:1rem;font-weight:700;color:#f1f5f9;">{ph_str}</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.05);border-radius:6px;padding:6px 8px;">
+      <div style="font-size:0.65rem;color:#CAF0F8;font-weight:700;">Avg WQI</div>
+      <div style="font-size:1rem;font-weight:700;color:#f1f5f9;">{wqi_str}</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.05);border-radius:6px;padding:6px 8px;
+                grid-column:1/-1;">
+      <div style="font-size:0.65rem;color:#CAF0F8;font-weight:700;">Safe Samples</div>
+      <div style="font-size:1rem;font-weight:700;color:#f1f5f9;">{sp_str}</div>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+    else:
+        st.sidebar.warning(f"No records found for '{search_query}'. Try a different location name.")
 
 states = sorted(df["state"].dropna().unique())
 
@@ -476,7 +1052,7 @@ if "wqi_filter"   not in st.session_state: st.session_state.wqi_filter = (0.0, 1
 
 # Geographical filter
 st.sidebar.markdown(
-    '<p style="color:#94a3b8;font-size:0.72rem;letter-spacing:0.08em;'
+    '<p style="color:#CAF0F8;font-size:0.72rem;letter-spacing:0.08em;'
     'font-weight:600;text-transform:uppercase;margin:0.8rem 0 4px 0;">GEOGRAPHICAL FILTER</p>',
     unsafe_allow_html=True,
 )
@@ -485,7 +1061,7 @@ sel_states = st.sidebar.multiselect(
 
 # Year range
 st.sidebar.markdown(
-    '<p style="color:#94a3b8;font-size:0.72rem;letter-spacing:0.08em;'
+    '<p style="color:#CAF0F8;font-size:0.72rem;letter-spacing:0.08em;'
     'font-weight:600;text-transform:uppercase;margin:0.8rem 0 4px 0;">YEAR RANGE</p>',
     unsafe_allow_html=True,
 )
@@ -499,7 +1075,7 @@ else:
 
 # WQI range
 st.sidebar.markdown(
-    '<p style="color:#94a3b8;font-size:0.72rem;letter-spacing:0.08em;'
+    '<p style="color:#CAF0F8;font-size:0.72rem;letter-spacing:0.08em;'
     'font-weight:600;text-transform:uppercase;margin:0.8rem 0 4px 0;">WQI SCORE RANGE</p>',
     unsafe_allow_html=True,
 )
@@ -509,11 +1085,36 @@ wqi_range = st.sidebar.slider(
 
 st.sidebar.markdown("---")
 
-if st.sidebar.button("🔄 Reset Dashboard", use_container_width=True):
+st.sidebar.markdown('<div class="reset-btn-wrap">', unsafe_allow_html=True)
+if st.sidebar.button("Reset Dashboard", use_container_width=True, key="reset_btn"):
     for k in ["state_filter", "year_filter", "wqi_filter"]:
         if k in st.session_state:
             del st.session_state[k]
     st.rerun()
+st.sidebar.markdown('</div>', unsafe_allow_html=True)
+
+# Override reset button color specifically
+st.sidebar.markdown("""
+<style>
+[data-testid="stSidebar"] div.reset-btn-wrap button {
+    background: #ffffff !important;
+    border: 1px solid #fecaca !important;
+    color: #061A2E !important;
+    font-weight: 700 !important;
+}
+[data-testid="stSidebar"] div.reset-btn-wrap button *,
+[data-testid="stSidebar"] div.reset-btn-wrap button p,
+[data-testid="stSidebar"] div.reset-btn-wrap button span,
+[data-testid="stSidebar"] div.reset-btn-wrap button div {
+    color: #061A2E !important;
+    -webkit-text-fill-color: #061A2E !important;
+}
+[data-testid="stSidebar"] div.reset-btn-wrap button:hover {
+    background-color: #F1FAFF !important;
+    color: #061A2E !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ─── SECTION: Data Filtering ────────────────────────────────────────────────────
 filt = df.copy()
@@ -525,14 +1126,16 @@ filt = filt[(filt["WQI"] >= wqi_range[0]) & (filt["WQI"] <= wqi_range[1])]
 filt["water_quality"] = filt["water_quality"].astype(str).str.strip()
 
 # ─── SECTION: App Header ────────────────────────────────────────────────────────
+_dark = st.session_state.get("dark_mode", False)
+_head_txt = "#f1f5f9" if _dark else "#0f172a"
 st.markdown(
-    '<h1 style="color:#0f172a;font-weight:800;font-size:2rem;margin-bottom:0.25rem;">'
-    '💧 AquaIntel Analytics</h1>',
+    f'<h1 style="color:{_head_txt};font-weight:800;font-size:1.75rem;margin:0 0 0.45rem 0;line-height:1.15;">'
+    'AquaIntel Analytics</h1>',
     unsafe_allow_html=True,
 )
 st.markdown(f"""
 <div style="background:#1e40af;color:#ffffff;padding:0.65rem 1.2rem;border-radius:8px;
-            font-size:0.82rem;font-weight:500;margin-bottom:1.2rem;letter-spacing:0.01em;">
+            font-size:0.82rem;font-weight:500;margin-bottom:0.9rem;letter-spacing:0.01em;">
   AquaIntel Analytics — Water Quality Monitoring System &nbsp;|&nbsp;
   CWC Data: 1961–2020 &nbsp;|&nbsp; Standard: BIS 10500:2012 &nbsp;|&nbsp;
   SDG Goal 6: Clean Water &amp; Sanitation &nbsp;|&nbsp;
@@ -579,10 +1182,7 @@ with tab1:
       {safe_pct_global:.1f}% of monitored stations meet BIS 10500:2012 drinking water standards.
     </div>
   </div>
-  <div style="text-align:right;font-size:0.78rem;color:#94a3b8;">
-    Last Updated<br>
-    <strong style="color:#475569;">{pd.Timestamp.now().strftime('%d %b %Y, %H:%M')}</strong>
-  </div>
+  
 </div>
 """, unsafe_allow_html=True)
 
@@ -1282,6 +1882,11 @@ with tab4:
         avail_bis2 = [p for p in avail if p in BIS_STANDARDS]
         if avail_bis2 and not filt.empty:
             cols_sc = st.columns(3)
+            _dark4 = st.session_state.get("dark_mode", False)
+            _sc_bg  = "#1e293b" if _dark4 else "#ffffff"
+            _sc_brd = "#334155" if _dark4 else "#e2e8f0"
+            _sc_lbl = "#f1f5f9" if _dark4 else "#0f172a"
+            _sc_sub = "#94a3b8"
             for i, param in enumerate(avail_bis2):
                 pct_exceed  = pct_exceeds(filt[param], BIS_STANDARDS[param])
                 compliance  = 100 - pct_exceed if pd.notna(pct_exceed) else 0.0
@@ -1291,16 +1896,16 @@ with tab4:
                 label   = PARAM_LABELS.get(param, param)
                 with cols_sc[i % 3]:
                     st.markdown(f"""
-<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;
+<div style="background:{_sc_bg};border:1px solid {_sc_brd};border-radius:10px;
             padding:1rem;margin-bottom:0.8rem;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
-  <div style="font-size:0.78rem;font-weight:600;color:#0f172a;">{label}</div>
-  <div style="font-size:0.7rem;color:#94a3b8;margin:2px 0;">BIS Limit — {bis_str}</div>
+  <div style="font-size:0.78rem;font-weight:600;color:{_sc_lbl};">{label}</div>
+  <div style="font-size:0.7rem;color:{_sc_sub};margin:2px 0;">BIS Limit — {bis_str}</div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
     <div style="font-size:1.4rem;font-weight:800;color:{bcolor};">{compliance:.0f}%</div>
     <span style="background:{bbg};color:{bcolor};font-size:0.65rem;font-weight:700;
                  padding:2px 8px;border-radius:20px;">{badge}</span>
   </div>
-  <div style="background:#e2e8f0;border-radius:4px;height:6px;margin-top:8px;">
+  <div style="background:#334155;border-radius:4px;height:6px;margin-top:8px;">
     <div style="background:{bcolor};width:{min(compliance,100):.0f}%;height:100%;border-radius:4px;"></div>
   </div>
 </div>""", unsafe_allow_html=True)
@@ -1470,15 +2075,49 @@ with tab4:
 # ═══════════════════════════════════════════════════════════════════════════════
 # SECTION: Predict Tab (AI Water Quality Predictor + Location Safety Analysis)
 # ═══════════════════════════════════════════════════════════════════════════════
-with tab5:
-    if models:
-        st.markdown(
-            '<div style="font-size:1.5rem;font-weight:800;color:#0f172a;margin-bottom:1.5rem;">'
-            '🤖 AI Water Quality Predictor</div>',
-            unsafe_allow_html=True,
-        )
+# Default realistic water quality values (typical for a moderately polluted source)
+PREDICT_DEFAULTS = {
+    "dissolved_oxygen":  6.8,
+    "total_hardness":  180.0,
+    "BOD":               2.1,
+    "COD":              12.0,
+    "TDS":             320.0,
+    "TSS":              18.0,
+    "nitrates":          8.5,
+    "ammonia":           0.3,
+    "phosphate":         0.4,
+    "chloride":         95.0,
+    "fluoride":          0.7,
+    "sulphate":         85.0,
+    "conductivity":    480.0,
+    "turbidity":         3.2,
+    "total_coliform":   12.0,
+    "fecal_coliform":    1.0,
+    "arsenic":           0.005,
+    "lead":              0.006,
+    "iron":              0.2,
+    "manganese":         0.05,
+    "pH":                7.2,
+    "temperature":      27.0,
+    "nitrites":          0.05,
+    "calcium":          52.0,
+    "magnesium":        18.0,
+}
 
-    if "rf_full" in models:
+with tab5:
+    _dark5 = st.session_state.get("dark_mode", False)
+    _t5col = "#f1f5f9" if _dark5 else "#0f172a"
+
+    # ── AI Predictor ─────────────────────────────────────────────────────────────
+    st.markdown(
+        f'<div style="font-size:1.5rem;font-weight:800;color:{_t5col};margin-bottom:0.5rem;">'
+        'AI Water Quality Predictor</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption("Enter parameter values below to predict water safety using trained ML models. "
+               "Default values represent a realistic moderate-quality water sample.")
+
+    if models and "rf_full" in models:
         model_rf = models["rf_full"]["model"]
         features = models["rf_full"]["features"]
         inputs   = {}
@@ -1486,9 +2125,13 @@ with tab5:
         with st.container(border=True):
             cols_p = st.columns(3)
             for i, feat in enumerate(features):
+                default_val = float(PREDICT_DEFAULTS.get(feat, 0.0))
                 inputs[feat] = cols_p[i % 3].number_input(
-                    PARAM_LABELS.get(feat, feat), value=0.0, key=f"pred_{feat}")
-            predict_clicked = st.button("🔍 Generate Prediction", use_container_width=True)
+                    PARAM_LABELS.get(feat, feat),
+                    value=default_val,
+                    key=f"pred_{feat}",
+                )
+            predict_clicked = st.button("Generate Prediction", use_container_width=True, key="predict_main_btn")
 
         if predict_clicked:
             input_df = pd.DataFrame([inputs])[features]
@@ -1497,106 +2140,103 @@ with tab5:
             col1p, col2p, col3p = st.columns(3)
             with col1p:
                 rf_pred = model_rf.predict(input_df)[0]
-                if rf_pred == 1: st.success("✅ SAFE (Random Forest)")
-                else:            st.error("⚠️ UNSAFE (Random Forest)")
+                if rf_pred == 1: st.success("Your Water is Safe For Drinking")
+                else:            st.error("Your Water is NOT Safe For Drinking")
 
             if "xgb_full" in models:
                 with col2p:
                     xgb_pred = models["xgb_full"]["model"].predict(input_df)[0]
-                    if xgb_pred == 1: st.success("✅ SAFE (XGBoost)")
-                    else:             st.error("⚠️ UNSAFE (XGBoost)")
+                    if xgb_pred == 1: st.success("Your Water is Safe For Drinking")
+                    else:             st.error("Your Water is NOT Safe For Drinking")
 
             if "hybrid_soft" in models:
                 with col3p:
                     hybrid_pred = models["hybrid_soft"]["model"].predict(input_df)[0]
-                    if hybrid_pred == 1: st.success("✅ SAFE (Hybrid Ensemble)")
-                    else:                st.error("⚠️ UNSAFE (Hybrid Ensemble)")
+                    if hybrid_pred == 1: st.success("Your Water is Safe For Drinking")
+                    else:                st.error("Your Water is NOT Safe For Drinking")
 
             st.markdown("---")
             pred_summary = {"RF (Main)": "Safe" if rf_pred == 1 else "Unsafe"}
-            if xgb_pred    is not None: pred_summary["XGBoost"]     = "Safe" if xgb_pred    == 1 else "Unsafe"
-            if hybrid_pred is not None: pred_summary["Soft Hybrid"]  = "Safe" if hybrid_pred == 1 else "Unsafe"
-            st.dataframe(pd.DataFrame(list(pred_summary.items()), columns=["Model","Prediction"]))
-    else:
+            if xgb_pred    is not None: pred_summary["XGBoost"]    = "Safe" if xgb_pred    == 1 else "Unsafe"
+            if hybrid_pred is not None: pred_summary["Soft Hybrid"] = "Safe" if hybrid_pred == 1 else "Unsafe"
+            st.dataframe(pd.DataFrame(list(pred_summary.items()), columns=["Model", "Prediction"]))
+    elif not models:
         st.warning("No models found. Run `model_dev.py` first to train and save models.")
-                # ─────────────────────────────────────────────
-# ⚡ Lite Prediction (3 Parameter Version)
-# ─────────────────────────────────────────────
-st.markdown("---")
-
-st.markdown(
-    '<div style="font-size:1.5rem;font-weight:800;color:#0f172a;margin-bottom:0.5rem;">'
-    '⚡ Lite Water Quality Prediction</div>',
-    unsafe_allow_html=True,
-)
-
-st.caption("Quick estimation using pH, Conductivity, and Nitrates (for demo/educational use)")
-
-col1, col2, col3 = st.columns(3)
-
-ph = col1.number_input("pH", 0.0, 14.0, 7.0)
-cond = col2.number_input("Conductivity (µS/cm)", 0.0, 2000.0)
-nit = col3.number_input("Nitrates (mg/L)", 0.0, 100.0)
-if st.button("⚡ Run Lite Prediction", key="lite_btn", use_container_width=True):
-
-    score = 0
-
-    if ph < 6.5 or ph > 8.5:
-        score += 1
-    if cond > 750:
-        score += 1
-    if nit > 45:
-        score += 1
-
-    if score == 0:
-        st.success("✅ SAFE - Within acceptable limits")
-    elif score == 1:
-        st.warning("⚠️ MODERATE - Check recommended")
     else:
-        st.error("🚨 UNSAFE - Treatment required")
+        st.warning("RF model (rf_full) not found. Run `model_dev.py` to train models.")
 
-
+    # ── Lite Prediction ───────────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown(
-        '<div style="font-size:1.5rem;font-weight:800;color:#0f172a;margin-bottom:1.5rem;">'
-        '📍 Location-based Safety Analysis</div>',
+        f'<div style="font-size:1.5rem;font-weight:800;color:{_t5col};margin-bottom:0.5rem;">'
+        'Lite Water Quality Prediction</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption("Quick estimation using pH, Conductivity, and Nitrates (for demo/educational use)")
+
+    with st.container(border=True):
+        col1, col2, col3 = st.columns(3)
+        ph   = col1.number_input("pH", 0.0, 14.0, 7.2, key="lite_ph")
+        cond = col2.number_input("Conductivity (µS/cm)", 0.0, 2000.0, 480.0, key="lite_cond")
+        nit  = col3.number_input("Nitrates (mg/L)", 0.0, 100.0, 8.5, key="lite_nit")
+
+        lite_clicked = st.button("Run Lite Prediction", key="lite_btn", use_container_width=True)
+
+    if lite_clicked:
+        score = 0
+        if ph < 6.5 or ph > 8.5: score += 1
+        if cond > 750:            score += 1
+        if nit > 45:              score += 1
+
+        if score == 0:
+            st.success("Your Water is Safe For Drinking")
+        elif score == 1:
+            st.warning("Your Water is Moderately Safe For Drinking")
+        else:
+            st.error("Your Water is NOT Safe For Drinking and Treatment required")
+
+    # ── Location Safety Analysis ──────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown(
+        f'<div style="font-size:1.5rem;font-weight:800;color:{_t5col};margin-bottom:1rem;">'
+        'Location-based Safety Analysis</div>',
         unsafe_allow_html=True,
     )
     with st.container(border=True):
         col1l, col2l = st.columns(2)
-        user_lat = col1l.number_input("Enter Latitude",  value=12.97)
-        user_lon = col2l.number_input("Enter Longitude", value=77.59)
-        analyze_clicked = st.button("🔎 Analyze Current Location", use_container_width=True)
+        user_lat = col1l.number_input("Enter Latitude",  value=12.97, key="loc_lat")
+        user_lon = col2l.number_input("Enter Longitude", value=77.59, key="loc_lon")
+        analyze_clicked = st.button("Analyze Current Location", use_container_width=True, key="loc_analyze_btn")
 
     if analyze_clicked:
         nearest = get_nearest_stations(filt, user_lat, user_lon, n=3)
 
         if not nearest.empty and nearest["distance_km"].min() > 30:
-            st.warning("⚠️ No nearby monitoring stations within 30 km. Results may be less accurate.")
+            st.warning("No nearby monitoring stations within 30 km. Results may be less accurate.")
 
         if "rf_full" not in models:
             st.error("Model not loaded. Run model_dev.py first.")
         else:
-            model    = models["rf_full"]["model"]
-            features = models["rf_full"]["features"]
-            st.markdown("### Nearest Monitoring Stations")
+            model_loc = models["rf_full"]["model"]
+            feat_loc  = models["rf_full"]["features"]
+            st.markdown("**Nearest Monitoring Stations**")
             weighted_sum = total_weight = 0
-            results      = []
+            results = []
 
             for _, row in nearest.iterrows():
-                input_data = pd.DataFrame([{f: row.get(f, 0) for f in features}])
-                pred     = model.predict(input_data)[0]
-                proba    = model.predict_proba(input_data)[0][1]
-                distance = row["distance_km"]
+                input_data   = pd.DataFrame([{f: row.get(f, 0) for f in feat_loc}])
+                pred         = model_loc.predict(input_data)[0]
+                proba        = model_loc.predict_proba(input_data)[0][1]
+                distance     = row["distance_km"]
                 adjusted_conf = proba * np.exp(-distance / 150)
                 weight        = np.exp(-distance / 50)
                 weighted_sum += proba * weight
                 total_weight += weight
-                prediction = "SAFE" if pred == 1 else "UNSAFE"
+                prediction    = "SAFE" if pred == 1 else "UNSAFE"
                 if row.get("WQI") and row["WQI"] > 50:
                     prediction = "UNSAFE"
                 results.append({
-                    "Station":       row.get("station_name", row.get("station","Unknown")),
+                    "Station":       row.get("station_name", row.get("station", "Unknown")),
                     "Distance (km)": round(distance, 2),
                     "WQI":           row.get("WQI"),
                     "Prediction":    prediction,
@@ -1609,20 +2249,21 @@ if st.button("⚡ Run Lite Prediction", key="lite_btn", use_container_width=True
             st.dataframe(results_df)
 
             final_score = weighted_sum / total_weight if total_weight > 0 else 0
-            st.markdown("### Final Decision")
+            st.markdown("**Final Decision**")
             st.write(f"Weighted Safety Score: **{final_score:.2%}**")
             if final_score > 0.5:
-                st.success("Overall: Water in this area is likely **SAFE**.")
+                st.success("Overall: Water in this area is likely SAFE.")
             else:
-                st.error("Overall: Water in this area is likely **UNSAFE**. Advise treatment.")
+                st.error("Overall: Water in this area is likely UNSAFE. Advise treatment.")
 
+            _map_bg = "#1e293b" if _dark5 else "#ffffff"
             fig_loc = px.scatter_mapbox(
                 results_df, lat="latitude", lon="longitude",
                 color="Prediction", size="WQI", size_max=18, zoom=6,
                 center={"lat": user_lat, "lon": user_lon},
                 mapbox_style="carto-positron",
-                hover_data={"Station":True,"Distance (km)":True,
-                            "Confidence":True,"latitude":False,"longitude":False},
+                hover_data={"Station": True, "Distance (km)": True,
+                            "Confidence": True, "latitude": False, "longitude": False},
             )
             fig_loc.add_scattermapbox(lat=[user_lat], lon=[user_lon], mode="markers",
                 marker=dict(size=14, color="black"), name="Your Location")
@@ -1632,8 +2273,8 @@ if st.button("⚡ Run Lite Prediction", key="lite_btn", use_container_width=True
                     mode="lines", line=dict(width=2, color="red"),
                     name=f'To {row["Station"]}', hoverinfo="none", showlegend=False,
                 )
-            fig_loc.update_layout(height=500, margin=dict(l=0,r=0,t=30,b=0),
-                paper_bgcolor="#ffffff",
+            fig_loc.update_layout(height=500, margin=dict(l=0, r=0, t=30, b=0),
+                paper_bgcolor=_map_bg,
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
             st.plotly_chart(fig_loc, use_container_width=True)
 
@@ -1642,24 +2283,204 @@ if st.button("⚡ Run Lite Prediction", key="lite_btn", use_container_width=True
 # SECTION: Upload Data Tab
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab6:
-    st.markdown("### 📤 Upload CSV Data")
+    st.markdown("""
+<div class="risk-hero">
+  <h3>Upload Water Risk Dataset</h3>
+  <p>Analyze uploaded CSV or Excel files using pH safety limits and district coordinates.</p>
+</div>
+""", unsafe_allow_html=True)
     st.info(
-        "Upload a CSV file containing water quality measurements. "
-        "Include a **WQI** column for automatic quality visualisation."
+        "Upload a CSV or Excel file. Required fields are District/Location and pH. "
+        "Latitude/longitude are used to map districts when available."
     )
-    uploaded = st.file_uploader("Upload CSV", type=["csv"])
+    uploaded = st.file_uploader("Upload CSV or Excel", type=["csv", "xlsx", "xls"])
 
     if uploaded:
         with st.spinner("Processing uploaded file..."):
-            new_df = pd.read_csv(uploaded)
-            st.success(f"✅ Loaded {len(new_df):,} rows × {len(new_df.columns)} columns")
-            st.write(new_df.head())
+            new_df = read_uploaded_water_file(uploaded)
+            st.success(f"Loaded {len(new_df):,} rows x {len(new_df.columns)} columns")
+            risk_df, upload_column_map, validation_errors = prepare_uploaded_risk_data(new_df)
+
+        if validation_errors:
+            if "Uploaded file has no rows." in validation_errors:
+                st.error("Uploaded file has no rows.")
+            else:
+                st.error(
+                    "Required columns missing: "
+                    + ", ".join(label.title() for label in validation_errors)
+                    + ". Please include District/Location and pH."
+                )
+                with st.expander("Detected upload columns"):
+                    detected = {
+                        key: (value if value else "Not found")
+                        for key, value in upload_column_map.items()
+                    }
+                    st.dataframe(pd.DataFrame([detected]), use_container_width=True)
+        else:
+            new_df["Risk_Level"] = risk_df["Risk_Level"].values
+            detected_cols = {
+                "District / Location": upload_column_map.get("district"),
+                "pH": upload_column_map.get("pH"),
+                "Latitude": upload_column_map.get("latitude") or "Fallback mapping",
+                "Longitude": upload_column_map.get("longitude") or "Fallback mapping",
+            }
+            with st.expander("Column detection details"):
+                st.dataframe(pd.DataFrame([detected_cols]), use_container_width=True)
+
+            district_risk_df = build_uploaded_district_risk_frame(risk_df)
+            unknown_rows = int((risk_df["Tested_Parameters"] == 0).sum())
+
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Avg pH", "N/A" if pd.isna(risk_df["pH"].mean()) else f"{risk_df['pH'].mean():.2f}")
+            m2.metric("Safe Districts", int((district_risk_df["Risk_Level"] == "Safe").sum()) if not district_risk_df.empty else 0)
+            m3.metric("Unsafe Districts", int((district_risk_df["Risk_Level"] == "Unsafe").sum()) if not district_risk_df.empty else 0)
+            m4.metric("Total Districts", int(district_risk_df["District"].nunique()) if not district_risk_df.empty else 0)
+
+            if unknown_rows:
+                st.warning(
+                    f"{unknown_rows:,} rows have no usable recognized parameter values and are marked as Unknown."
+                )
+
+            filter_col1, filter_col2 = st.columns([1, 2])
+            with filter_col1:
+                risk_filter = st.multiselect(
+                    "Risk Level",
+                    ["Safe", "Unsafe", "Unknown"],
+                    default=["Safe", "Unsafe", "Unknown"],
+                    key="uploaded_risk_filter",
+                )
+            with filter_col2:
+                district_search = st.text_input(
+                    "District Search",
+                    placeholder="Type a district or location name...",
+                    key="uploaded_district_search",
+                )
+
+            filtered_districts = district_risk_df.copy()
+            if risk_filter:
+                filtered_districts = filtered_districts[filtered_districts["Risk_Level"].isin(risk_filter)]
+            if district_search.strip():
+                q = district_search.strip().lower()
+                filtered_districts = filtered_districts[
+                    filtered_districts["District"].astype(str).str.lower().str.contains(q, na=False)
+                ]
+
+            st.markdown("""
+<div class="risk-legend">
+  <span><i class="risk-dot" style="background:#16a34a;"></i>Safe</span>
+  <span><i class="risk-dot" style="background:#dc2626;"></i>Unsafe</span>
+  <span><i class="risk-dot" style="background:#94a3b8;"></i>Unknown</span>
+</div>
+""", unsafe_allow_html=True)
+
+            map_df = filtered_districts.dropna(subset=["latitude", "longitude"]).copy()
+            no_coord_count = len(filtered_districts) - len(map_df)
+            if no_coord_count > 0:
+                st.warning(
+                    f"Coordinates unavailable for {no_coord_count:,} district(s). "
+                    "Add latitude/longitude columns or extend the predefined district coordinate mapping."
+                )
+
+            if map_df.empty:
+                st.warning("No mappable district records after filters. Check coordinates or filter selection.")
+            else:
+                risk_colors = {"Safe": "#16a34a", "Unsafe": "#dc2626", "Unknown": "#94a3b8"}
+                fig_risk_map = px.scatter_mapbox(
+                    map_df,
+                    lat="latitude",
+                    lon="longitude",
+                    color="Risk_Level",
+                    color_discrete_map=risk_colors,
+                    size="Samples",
+                    size_max=24,
+                    center={"lat": float(map_df["latitude"].mean()), "lon": float(map_df["longitude"].mean())},
+                    zoom=5 if len(map_df) <= 40 else 4,
+                    mapbox_style="carto-positron",
+                    hover_name="District",
+                    hover_data={
+                        "Risk_Level": True,
+                        "pH": ":.2f",
+                        "Risk_Score": True,
+                        "Tested_Parameters": True,
+                        "Violated_Parameters": True,
+                        "Samples": True,
+                        "latitude": False,
+                        "longitude": False,
+                    },
+                    category_orders={"Risk_Level": ["Safe", "Unsafe", "Unknown"]},
+                    title="District-Level pH Safety Risk Map",
+                )
+                fig_risk_map.update_traces(marker=dict(opacity=0.88))
+                fig_risk_map.update_layout(
+                    height=620,
+                    margin=dict(l=0, r=0, t=42, b=0),
+                    paper_bgcolor="#F1FAFF",
+                    legend=dict(
+                        title="Risk Level",
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.01,
+                        xanchor="right",
+                        x=1,
+                    ),
+                )
+                st.plotly_chart(
+                    fig_risk_map,
+                    use_container_width=True,
+                    config={"scrollZoom": True, "displayModeBar": True, "displaylogo": False},
+                )
+
+            c1, c2 = st.columns([1.25, 1])
+            with c1:
+                st.markdown("#### District Risk Summary")
+                summary_cols = [
+                    "District", "Risk_Level", "pH", "Risk_Score", "Tested_Parameters",
+                    "Violated_Parameters", "Samples", "latitude", "longitude",
+                ]
+                st.dataframe(
+                    filtered_districts[summary_cols].sort_values(["Risk_Level", "District"]).round(3),
+                    use_container_width=True,
+                    height=360,
+                )
+            with c2:
+                risk_counts_df = (
+                    risk_df["Risk_Level"]
+                    .value_counts()
+                    .reindex(["Safe", "Unsafe", "Unknown"])
+                    .fillna(0)
+                    .astype(int)
+                    .rename_axis("Risk_Level")
+                    .reset_index(name="Records")
+                )
+                fig_counts = px.bar(
+                    risk_counts_df,
+                    x="Risk_Level",
+                    y="Records",
+                    color="Risk_Level",
+                    color_discrete_map={"Safe": "#16a34a", "Unsafe": "#dc2626", "Unknown": "#94a3b8"},
+                    labels={"Risk_Level": "Risk Level", "Records": "Records"},
+                    title="Uploaded Record Risk Distribution",
+                )
+                fig_counts = update_chart_layout(fig_counts, height=360)
+                fig_counts.update_layout(showlegend=False)
+                st.plotly_chart(fig_counts, use_container_width=True, config={"displayModeBar": False})
+
+            with st.expander("Preview processed upload with Risk_Level"):
+                st.dataframe(risk_df.head(1000), use_container_width=True, height=360)
+
+            st.download_button(
+                "Download Processed Risk Dataset",
+                data=risk_df.to_csv(index=False),
+                file_name=f"water_risk_upload_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                key="download_uploaded_risk_csv",
+            )
 
         if "WQI" in new_df.columns:
             fig_up = px.histogram(
                 new_df, x="WQI", nbins=40,
                 title="WQI Distribution in Uploaded Data",
-                labels={"WQI":"Water Quality Index (WQI)"},
+                labels={"WQI": "Water Quality Index (WQI)"},
                 color_discrete_sequence=["#1e40af"],
             )
             fig_up.add_vline(x=50, line_dash="dash", line_color="#dc2626",
@@ -1669,11 +2490,7 @@ with tab6:
                                  yaxis_title="Number of Records")
             st.plotly_chart(fig_up, use_container_width=True)
 
-            # Summary stats
-            with st.expander(" Summary Statistics"):
+            with st.expander("Summary Statistics"):
                 st.dataframe(new_df.describe().round(2), use_container_width=True)
         else:
-            st.warning(
-                "No 'WQI' column found in uploaded file. "
-                "Add a WQI column to enable quality visualisation."
-            )
+            st.caption("No WQI column found; upload risk analysis above uses pH only.")
