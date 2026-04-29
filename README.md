@@ -1,93 +1,198 @@
-# 💧 AquaIntel Analytics
-**Intelligence-First Water Quality Monitoring & Risk Assessment**
-*DSML Cohort 15 | IIMSTC | SDG 6 Aligned*
+# 🌊 AquaIntel Analytics — Water Quality Intelligence Dashboard
+
+AquaIntel Analytics is a **data-driven water quality monitoring and risk analysis platform** built using Streamlit. It enables users to analyze, visualize, and predict water safety using environmental parameters and machine learning.
 
 ---
 
-## Project Structure
+## 🚀 Project Overview
+
+This application is designed to provide **actionable insights on water quality** using real-world datasets. It combines:
+
+* 📊 Data Analytics
+* 🤖 Machine Learning
+* 🗺️ GIS-Based Visualization
+
+to help identify whether water is **safe for consumption** and highlight **risk-prone regions**.
+
+---
+
+## 🎯 Core Functionalities
+
+### 📊 Exploratory Data Analysis
+
+* Analyze water quality parameters across regions
+* Distribution plots, trends, and correlations
+* Data-driven insights for decision-making
+
+---
+
+### 🤖 Predictive Modeling
+
+* Built using:
+
+  * Random Forest
+  * XGBoost
+  * Hybrid ML models
+* Predicts water safety classification:
+
+  * Safe
+  * Unsafe
+
+---
+
+### 🗺️ GIS Water Quality Mapping
+
+* Interactive visualization of water quality across regions
+* Multiple map styles (terrain, dark, satellite, etc.)
+* Marker-based and heatmap representations
+
+---
+
+## 🌊 Upload & Risk Mapping (Enhanced Feature)
+
+The application includes an advanced **Upload Tab** that allows users to:
+
+### 📥 Upload Custom Data
+
+* Supports:
+
+  * CSV files
+  * Excel files
+
+### 📌 Required Inputs
+
+* District / Location
+* pH
+* Conductivity
+* Nitrate
+
+---
+
+### ⚙️ Automated Risk Analysis
+
+Once uploaded, the system:
+
+* Cleans and processes the dataset
+* Evaluates water quality using key parameters
+* Generates a **Risk Level Classification**:
+
+| Risk Level  | Description                       |
+| ----------- | --------------------------------- |
+| ✅ Safe      | All parameters within safe limits |
+| ⚠️ Moderate | One parameter exceeds safe limit  |
+| ❌ Unsafe    | Multiple parameters exceed limits |
+
+---
+
+### 🗺️ District-Level Risk Map
+
+* Displays **interactive map visualization**
+* Color-coded risk levels:
+
+  * 🟢 Safe
+  * 🟡 Moderate
+  * 🔴 Unsafe
+* Hover insights include:
+
+  * District name
+  * pH value
+  * Conductivity
+  * Nitrate level
+  * Risk classification
+
+---
+
+## 🎨 User Interface Design
+
+The dashboard follows a **modern water-themed UI**:
+
+* 🌊 Gradient blue sidebar (ocean-inspired)
+* 💧 Clean card-based layout
+* 🎯 High readability with optimized text contrast
+* 📱 Responsive and interactive components
+
+---
+
+## 🛠️ Tech Stack
+
+| Category         | Tools Used            |
+| ---------------- | --------------------- |
+| Frontend         | Streamlit             |
+| Data Processing  | Pandas, NumPy         |
+| Visualization    | Plotly, Mapbox        |
+| Machine Learning | Scikit-learn, XGBoost |
+| Deployment       | Streamlit / Local     |
+
+---
+
+## 📂 Project Structure
+
 ```
-aquaintel/
-├── app.py                    # Streamlit dashboard (run this)
-├── requirements.txt
-├── data/                     # ← DROP YOUR CWC CSVs HERE
-│   └── raw/                  # Optional sub-folder; auto-discovered
-├── models/                   # Trained models (auto-generated)
-├── figures/                  # EDA & model plots (auto-generated)
-├── utils/
-│   └── data_loader.py        # Data loading, WQI, preprocessing
-└── notebooks/
-    ├── eda.py                # EDA script → saves all figures
-    └── model_dev.py          # Model training script
+AquaIntel-Analytics/
+│── app.py
+│── data/
+│   └── raw/
+│── utils/
+│── models/
+│── notebooks/
+│── requirements.txt
+│── README.md
 ```
 
 ---
 
-## Quick Start
+## ▶️ Getting Started
 
 ```bash
+# Clone the repository
+git clone https://github.com/NitishRH07/AquaIntel-Analytics.git
+
+# Navigate into the project
+cd AquaIntel-Analytics
+
+# Install dependencies
 pip install -r requirements.txt
 
-# 1. Drop your CSV files into /data/
-#    (CWC SWQ format — any state, any year)
-cp swq_manual_*.csv data/
-
-# 2. Run EDA
-python notebooks/eda.py          # generates /figures/*.png
-
-# 3. Train models
-python notebooks/model_dev.py    # generates /models/*.pkl
-
-# 4. Launch dashboard
+# Run the application
 streamlit run app.py
 ```
 
-If no CSVs are found, the system auto-generates **synthetic demo data** so you can explore the full UI immediately.
+---
+
+## 📈 Applications
+
+* Water resource monitoring
+* Environmental analytics
+* Government decision support systems
+* Smart city infrastructure
+* Academic and research projects
 
 ---
 
-## Adding New Datasets
+## ⚠️ Limitations
 
-Just drop new CSVs into `/data/`. The loader auto-discovers all `*.csv` files recursively and maps column names via the alias table in `data_loader.py`. No code changes needed.
-
-To add a new state column alias, add one line to `RENAME_MAP` in `utils/data_loader.py`.
-
----
-
-## Models
-
-| Model       | Features                  | Target Accuracy | Use Case                    |
-|-------------|---------------------------|----------------|-----------------------------|
-| RF Full     | All available parameters  | ≥ 92%          | Municipalities, industry    |
-| XGB Full    | All available parameters  | ≥ 93%          | Municipalities, industry    |
-
-All models use:
-- Rank Centroid Weighting for WQI computation
-- BIS 10500:2012 standards for labelling
-- StratifiedKFold cross-validation (k=5)
-- SMOTE for class imbalance handling
+* Requires structured dataset format
+* Mapping requires location coordinates
+* Model performance depends on training data quality
 
 ---
 
-## Dashboard Tabs
+## 🔮 Future Scope
 
-| Tab | Description |
-|-----|-------------|
-| 📊 Overview | KPIs, WQI distribution, BIS exceedance, state comparison |
-| 🗺️ Risk Heatmap | Spatial density + scatter map by quality |
-| 📈 Trends & Seasonal | Year-over-year trends, monsoon vs non-monsoon |
-| 🔬 Parameter Analysis | Deep dive into any parameter, correlations |
-| 🤖 Predict (ML) | Real-time prediction with gauge + compliance check |
-| 📤 Upload New Data | Drag & drop new CSVs for instant analysis |
+* Real-time sensor data integration (IoT)
+* Advanced deep learning models
+* Automated geo-mapping for districts
+* Cloud-based analytics and storage
+* Mobile-friendly UI enhancements
 
 ---
 
-## Data Sources
-- **CWC SWQ Manual Chemical Parameters** (1961–2020)
-- States: Andhra Pradesh, Jharkhand, Karnataka, Kerala, Maharashtra, Meghalaya, Manipur, Mizoram
-- Standards: BIS 10500:2012 (Indian Drinking Water Standards)
+## 👨‍💻 Author
 
-## Phase 2 Roadmap
-- Real-time IoT sensor integration
-- NWDP / GEMStat API connection
-- SHAP explainability panel
-- Government portal embed
+Cohort 15 DSML
+
+---
+
+## 📜 License
+
+This project is intended for **academic, research, and learning purposes**.
