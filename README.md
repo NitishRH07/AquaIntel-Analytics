@@ -140,10 +140,11 @@ AquaIntel-Analytics/
 ```
 
 ---
-🏗️ System Architecture
+## 🏗️ System Architecture
 
 The AquaIntel Analytics system follows a modular pipeline for data ingestion, processing, prediction, and visualization.
 
+```
             ┌───────────────────────────┐
             │   Raw Water Data Sources  │
             │ (NWDP / CSV / Excel Upload) │
@@ -184,6 +185,23 @@ The AquaIntel Analytics system follows a modular pipeline for data ingestion, pr
      │ - Plotly Charts                         │
      │ - GIS Risk Map (Mapbox / PyDeck)        │
      └────────────────────────────────────────┘
+```
+
+---
+
+
+## 💡 Tips for Best Screenshots
+
+* Use **dark + water theme UI (your updated design)**
+* Show:
+
+  * Filters in sidebar
+  * Map with colored markers
+  * Metrics/cards visible
+* Avoid clutter — keep it clean and focused
+
+---
+
 ## ▶️ Getting Started
 
 ```bash
