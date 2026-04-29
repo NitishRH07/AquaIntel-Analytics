@@ -142,51 +142,63 @@ AquaIntel-Analytics/
 ---
 ## 🏗️ System Architecture
 
-The AquaIntel Analytics system follows a modular pipeline for data ingestion, processing, prediction, and visualization.
+The AquaIntel Analytics system is designed as a modular pipeline that processes raw water quality data, applies analytical and predictive models, and visualizes results through an interactive dashboard.
 
+```text
+            ┌──────────────────────────────┐
+            │   Data Sources               │
+            │ • NWDP Government Data       │
+            │ • Historical Datasets        │
+            │ • User Upload (CSV/Excel)    │
+            └─────────────┬────────────────┘
+                          │
+                          ▼
+            ┌──────────────────────────────┐
+            │   Data Ingestion Layer       │
+            │ • File Upload Handling       │
+            │ • Format Validation          │
+            └─────────────┬────────────────┘
+                          │
+                          ▼
+            ┌──────────────────────────────┐
+            │   Data Preprocessing         │
+            │ • Missing Value Handling     │
+            │ • Cleaning & Transformation  │
+            │ • Feature Selection          │
+            └─────────────┬────────────────┘
+                          │
+                          ▼
+            ┌──────────────────────────────┐
+            │   Feature Engineering        │
+            │ • pH                         │
+            │ • Conductivity               │
+            │ • Nitrate                    │
+            │ • Derived Risk Metrics       │
+            └─────────────┬────────────────┘
+                          │
+          ┌───────────────┴────────────────┐
+          ▼                                ▼
+┌──────────────────────────┐     ┌──────────────────────────┐
+│ Machine Learning Models  │     │ Rule-Based Risk Engine   │
+│ • Random Forest          │     │ • Threshold Logic        │
+│ • XGBoost                │     │ • Risk Classification    │
+│ • Hybrid Model           │     │   (Safe/Moderate/Unsafe) │
+└─────────────┬────────────┘     └─────────────┬────────────┘
+              ▼                                ▼
+        ┌────────────────────────────────────────────┐
+        │        Prediction & Risk Output            │
+        │ • Water Safety Classification              │
+        │ • Risk Levels per District                 │
+        └─────────────┬──────────────────────────────┘
+                      │
+                      ▼
+        ┌────────────────────────────────────────────┐
+        │   Visualization & Presentation Layer       │
+        │ • Streamlit Dashboard                      │
+        │ • Plotly Charts                            │
+        │ • GIS Risk Map (Mapbox / PyDeck)           │
+        └────────────────────────────────────────────┘
 ```
-            ┌───────────────────────────┐
-            │   Raw Water Data Sources  │
-            │ (NWDP / CSV / Excel Upload) │
-            └────────────┬──────────────┘
-                         │
-                         ▼
-            ┌───────────────────────────┐
-            │     Data Preprocessing     │
-            │ - Cleaning (NaN handling)  │
-            │ - Feature Selection        │
-            │ - Normalization            │
-            └────────────┬──────────────┘
-                         │
-                         ▼
-            ┌───────────────────────────┐
-            │   Feature Engineering      │
-            │ - pH, Conductivity, Nitrate │
-            │ - Derived Risk Metrics     │
-            └────────────┬──────────────┘
-                         │
-          ┌──────────────┴──────────────┐
-          ▼                             ▼
-┌───────────────────────┐   ┌────────────────────────┐
-│ Machine Learning Layer │   │  Rule-Based Risk Engine │
-│ - Random Forest       │   │ - Threshold Logic       │
-│ - XGBoost             │   │ - Safe/Moderate/Unsafe  │
-│ - Hybrid Model        │   └────────────┬───────────┘
-└────────────┬──────────┘                │
-             ▼                           ▼
-     ┌────────────────────────────────────────┐
-     │        Prediction & Risk Output        │
-     └────────────┬──────────────────────────┘
-                  │
-                  ▼
-     ┌────────────────────────────────────────┐
-     │     Visualization & Dashboard Layer     │
-     │ - Streamlit UI                          │
-     │ - Plotly Charts                         │
-     │ - GIS Risk Map (Mapbox / PyDeck)        │
-     └────────────────────────────────────────┘
-```
-
 ---
 
 
