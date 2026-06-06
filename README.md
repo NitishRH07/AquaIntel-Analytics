@@ -1,5 +1,7 @@
 # 🌊 AquaIntel Analytics — Water Quality Intelligence Dashboard
 
+live demo:https://aquaintel-analytics-8iksg24xkhtxrnukxsktw7.streamlit.app
+
 AquaIntel Analytics is a **data-driven water quality monitoring and risk analysis platform** built using Streamlit. It enables users to analyze, visualize, and predict water safety using environmental parameters and machine learning.
 
 ---
